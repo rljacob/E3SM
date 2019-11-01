@@ -663,9 +663,13 @@ for mct, etc.
   <CPPDEFS>
     <append> -DSYSDARWIN </append>
   </CPPDEFS>
+  <!-- The following may cause duplicate symbol issue, especially with Mac OSX high sierra -->
+  <!-- NOTE: it's observed when coupled with pflotran, which uses PETSc library
   <LDFLAGS>
     <append MODEL="driver"> -all_load </append>
   </LDFLAGS>
+  -->
+  
 </compiler>
 
 <compiler OS="Darwin" COMPILER="intel">

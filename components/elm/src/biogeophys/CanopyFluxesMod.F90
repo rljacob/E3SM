@@ -703,10 +703,10 @@ contains
 
       if (found) then
          if ( .not. use_fates ) then
-            #ifndef _OPENACC
+#ifndef _OPENACC
             write(iulog,*)'Error: Forcing height is below canopy height for pft index '
             call endrun(decomp_index=index, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
-            #endif
+#endif
          end if
       end if
 
@@ -833,12 +833,12 @@ contains
 
 
          if ( use_fates ) then
-           #ifndef _OPENACC
+#ifndef _OPENACC
             call alm_fates%wrap_photosynthesis(bounds, fn, filterp(1:fn), &
                   svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
                   co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
                   atm2lnd_vars, temperature_vars, canopystate_vars, photosyns_vars)
-            #endif
+#endif
          else ! not use_fates
 
             if ( use_hydrstress ) then

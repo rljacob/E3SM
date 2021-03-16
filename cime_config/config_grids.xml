@@ -3016,8 +3016,8 @@
       <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/ne30pg2/map_ne30pg2_to_oRRS30to10v3_mono.210316.nc</map>
       <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/ne30pg2/map_ne30pg2_to_oRRS30to10v3_bilin.210316.nc</map>
       <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/ne30pg2/map_ne30pg2_to_oRRS30to10v3_bilin.210316.nc</map>
-      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oARRM60to10/map_oRRS30to10v3_to_ne30pg2_mono.210316.nc</map>
-      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oARRM60to10/map_oRRS30to10v3_to_ne30pg2_mono.210316.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oRRS30to10v3/map_oRRS30to10v3_to_ne30pg2_mono.210316.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oRRS30to10v3/map_oRRS30to10v3_to_ne30pg2_mono.210316.nc</map>
     </gridmap>
 
     <gridmap atm_grid="ne30np4.pg2" ocn_grid="EC30to60E2r2">

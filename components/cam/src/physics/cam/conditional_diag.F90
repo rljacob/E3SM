@@ -292,23 +292,23 @@ subroutine conditional_diag_readnl(nlfile)
 
     if (cnd_diag_info%nmetric == 0) then
 
-      write(iulog,*)' -----------------------------------------------------'
-      write(iulog,*)'     *** Conditional diagnostics NOT requested ***'
-      write(iulog,*)' -----------------------------------------------------'
+      write(iulog,*)'====================================================='
+      write(iulog,*)'    *** Conditional diagnostics NOT requested ***'
+      write(iulog,*)'-----------------------------------------------------'
 
     else
 
-      write(iulog,*)' --------------------------------------------------'
-      write(iulog,*)'     *** Conditional diagnostics requested ***'
-      write(iulog,*)' --------------------------------------------------'
+      write(iulog,*)'=================================================='
+      write(iulog,*)'    *** Conditional diagnostics requested ***'
+      write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,a12,i12,i12,e20.10)')'metric','nlev','cmpr type','threshold'
+      write(iulog,'(4x,2x,a10,a6,a12,a20)')'metric','nlev','cmpr type','threshold'
       do ii = 1,cnd_diag_info%nmetric
-         write(iulog,'(i4.3,a12,i12,i12,e20.10)') ii, cnd_diag_info%metric_name(ii), &
-                                                      cnd_diag_info%metric_nver(ii), &
-                                                      cnd_diag_info%metric_cmpr_type(ii), &
-                                                      cnd_diag_info%metric_threshold(ii)   
+         write(iulog,'(i4.3,2x,a10,i6,i12,e20.10)') ii, cnd_diag_info%metric_name(ii), &
+                                                        cnd_diag_info%metric_nver(ii), &
+                                                        cnd_diag_info%metric_cmpr_type(ii), &
+                                                        cnd_diag_info%metric_threshold(ii)
       end do
 
       write(iulog,*)
@@ -316,28 +316,35 @@ subroutine conditional_diag_readnl(nlfile)
       do ii = 1,cnd_diag_info%nphysproc
          write(iulog,'(i4.3,a20)') ii, cnd_diag_info%physproc_name(ii)
       end do
+      write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,a40)')'field w/ 1 vertical level'
+      write(iulog,'(4x,a30)')'field w/ 1 vertical level'
       do ii = 1,cnd_diag_info%nfld_1lev
-         write(iulog,'(i4.3,a40)') ii, cnd_diag_info%fld_name_1lev(ii)
+         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_1lev(ii)
       end do
+      write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,a40)')'field w/ nlev vertical levels'
+      write(iulog,'(4x,a30)')'field w/ nlev vertical levels'
       do ii = 1,cnd_diag_info%nfld_nlev
-         write(iulog,'(i4.3,a40)') ii, cnd_diag_info%fld_name_nlev(ii)
+         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_nlev(ii)
       end do
+      write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,a40)')'field w/ nlev+1 vertical levels'
+      write(iulog,'(4x,a30)')'field w/ nlev+1 vertical levels'
       do ii = 1,cnd_diag_info%nfld_nlevp
-         write(iulog,'(i4.3,a40)') ii, cnd_diag_info%fld_name_nlevp(ii)
+         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_nlevp(ii)
       end do
+      write(iulog,*)'--------------------------------------------------'
 
-      write(iulog,*)  'l_output_state = ',l_output_state
-      write(iulog,*)  'l_output_tend  = ',l_output_tend
-      write(iulog,*)' --------------------------------------------------'
+      write(iulog,*)
+      write(iulog,*)' l_output_state = ',l_output_state
+      write(iulog,*)' l_output_tend  = ',l_output_tend
+      write(iulog,*)
+      write(iulog,*)'=================================================='
+      write(iulog,*)
 
    end if
   end if

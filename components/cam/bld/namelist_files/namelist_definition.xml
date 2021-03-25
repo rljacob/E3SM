@@ -1240,6 +1240,77 @@ Filepath for dataset containing CO2 flux from fossil fuel.
 Default: none
 </entry>
 
+<!-- Conditional diagnostics -->
+
+<entry id="metric_name" type="char*8(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of fields to use for conditional sampling 
+Default: none
+</entry>
+
+<entry id="metric_nver" type="integer(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Number of vertical levels of the fields used for conditional sampling
+Default: none
+</entry>
+
+<entry id="metric_cmpr_type" type="integer(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Type of comparison (.gt., .ge., .lt., .le.) to be used
+for each matric in conditional sampling.
+Different metrics can have different types of comparison.
+Default: none
+</entry>
+
+<entry id="metric_threshold" type="real(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Threshold to be used for each matric in conditional sampling.
+Different metrics can have different thresholds.
+Default: none
+</entry>
+
+<entry id="physproc_name" type="char*20(100)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of physical processes to which conditional sampling 
+will be applied.
+Default: none
+</entry>
+
+<entry id="fld_name_1lev" type="char*8(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of fields with one vertical level to which conditional sampling 
+will be applied.
+Default: none
+</entry>
+
+<entry id="fld_name_nlev" type="char*8(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of fields with nlev vertical levels to which conditional sampling 
+will be applied.
+Default: none
+</entry>
+
+<entry id="fld_name_nlevp" type="char*8(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of fields with nlev+1 vertical levels to which conditional sampling 
+will be applied.
+Default: none
+</entry>
+
+<entry id="l_output_state" type="logical"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Whether the state of the above-specified fields will be written 
+to history file(s).
+Default: none
+</entry>
+
+<entry id="l_output_tend" type="logical"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Whether the tendencies of the above-specified fields will be written 
+to history file(s).
+Default: none
+</entry>
+
 <!-- History and Initial Conditions Output -->
 
 <entry id="avgflag_pertape" type="char*1(6)"  category="history"

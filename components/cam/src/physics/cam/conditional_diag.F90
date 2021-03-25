@@ -110,10 +110,10 @@ contains
 !===============================================================================
 subroutine conditional_diag_readnl(nlfile)
 
-!  use namelist_utils,  only: find_group_name
-!  use units,           only: getunit, freeunit
-!  use mpishorthand
-   use infnan, only : nan, assignment(=)
+   use infnan,          only: nan, assignment(=)
+   use namelist_utils,  only: find_group_name
+   use units,           only: getunit, freeunit
+   use mpishorthand
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -136,15 +136,18 @@ subroutine conditional_diag_readnl(nlfile)
 
    logical :: l_output_state, l_output_tend
 
+   ! other misc local variables
    integer :: nmetric
    integer :: nphysproc
    integer :: nfld
 
    integer :: ii
 
-   namelist /conditional_diag_nl/  metric_name, metric_nver, metric_cmpr_type, metric_threshold, &
-                                   physproc_name, fld_name_1lev, fld_name_nlev, fld_name_nlevp,  &
-                                   l_output_state, l_output_tend
+   !-------
+   namelist /conditional_diag_nl/  &
+            metric_name, metric_nver, metric_cmpr_type, metric_threshold, &
+            physproc_name, fld_name_1lev, fld_name_nlev, fld_name_nlevp,  &
+            l_output_state, l_output_tend
 
    !----------------------------------------
    !  Default values
@@ -163,28 +166,60 @@ subroutine conditional_diag_readnl(nlfile)
    l_output_tend  = .false.
 
    !----------------------------------------
-   !  place holder: read namelist !!!!!!!!!!!!!!!!!!!!
-   !  BGN: tmp code for testing !!!!!!!!!!!!!!!!!!!!
+   ! Read namelist
    !----------------------------------------
-   metric_name     (1:3) = (/"CAPE","SSATW","SSATI"/)
-   metric_nver     (1:3) = (/1,     72,     72/)
-   metric_cmpr_type(1:3) = (/GT,    GT,     GT/)
-   metric_threshold(1:3) = (/0._r8, 0._r8, 0._r8/)
+   if (masterproc) then
+      unitn = getunit()
+      open( unitn, file=trim(nlfile), status='old' )
+      call find_group_name(unitn, 'conditional_diag_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, conditional_diag_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subname // ':: ERROR reading namelist')
+         end if
+      end if
+      close(unitn)
+   end if ! masterproc
 
-   nphysproc = 2
-   physproc_name(1) = "zm_conv_tend"
-   physproc_name(2) = "cam_radheat" 
+   !  BGN: tmp code for testing !!!!!!!!!!!!!!!!!!!!
 
-   fld_name_1lev(1) = "CAPE"
+   ! metric_name     (1:3) = (/"CAPE","SSATW","SSATI"/)
+   ! metric_nver     (1:3) = (/1,     72,     72/)
+   ! metric_cmpr_type(1:3) = (/GT,    GT,     GT/)
+   ! metric_threshold(1:3) = (/0._r8, 0._r8, 0._r8/)
 
-   ii = 0
-   ii = ii + 1 ; fld_name_nlev(ii) = "Q"
-   ii = ii + 1 ; fld_name_nlev(ii) = "SSATW"
-   ii = ii + 1 ; fld_name_nlev(ii) = "QSATW"
-   ii = ii + 1 ; fld_name_nlev(ii) = "SSATI"
-   ii = ii + 1 ; fld_name_nlev(ii) = "QSATI"
+   ! nphysproc = 2
+   ! physproc_name(1) = "zm_conv_tend"
+   ! physproc_name(2) = "cam_radheat" 
+
+   ! fld_name_1lev(1) = "CAPE"
+
+   ! ii = 0
+   ! ii = ii + 1 ; fld_name_nlev(ii) = "Q"
+   ! ii = ii + 1 ; fld_name_nlev(ii) = "SSATW"
+   ! ii = ii + 1 ; fld_name_nlev(ii) = "QSATW"
+   ! ii = ii + 1 ; fld_name_nlev(ii) = "SSATI"
+   ! ii = ii + 1 ; fld_name_nlev(ii) = "QSATI"
 
    !  END: tmp code for testing !!!!!!!!!!!!!!!!!!!!
+
+#ifdef SPMD
+   ! Broadcast namelist variables
+
+   call mpibcast(metric_name,      nmetric_max*len(metric_name(1)), mpichar, 0, mpicom)
+   call mpibcast(metric_nver,      nmetric_max,                     mpiint,  0, mpicom)
+   call mpibcast(metric_cmpr_type, nmetric_max,                     mpiint,  0, mpicom)
+   call mpibcast(metric_threshold, nmetric_max,                     mpir8,   0, mpicom)
+
+   call mpibcast(physproc_name,  nphysproc_max*len(physproc_name(1)), mpichar, 0, mpicom)
+
+   call mpibcast(fld_name_1lev,  nfld_max*len(fld_name_1lev(1)),  mpichar, 0, mpicom)
+   call mpibcast(fld_name_nlev,  nfld_max*len(fld_name_nlev(1)),  mpichar, 0, mpicom)
+   call mpibcast(fld_name_nlevp, nfld_max*len(fld_name_nlevp(1)), mpichar, 0, mpicom)
+
+   call mpibcast(l_output_state, 1, mpilog, 0, mpicom)
+   call mpibcast(l_output_tend,  1, mpilog, 0, mpicom)
+#endif
 
    !-------------------------------------------
    !  Pack information into to cnd_diag_info
@@ -200,22 +235,22 @@ subroutine conditional_diag_readnl(nlfile)
    cnd_diag_info%nmetric = nmetric
 
    allocate( cnd_diag_info%metric_name(nmetric), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%metric_name')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_name')
 
    do ii = 1,nmetric
       cnd_diag_info%metric_name(ii) = trim(adjustl(metric_name(ii)))
    end do
 
    allocate( cnd_diag_info%metric_nver(nmetric), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%metric_nver')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_nver')
    cnd_diag_info%metric_nver(1:nmetric) = metric_nver(1:nmetric)
 
    allocate( cnd_diag_info%metric_cmpr_type(nmetric), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%metric_cmpr_type')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_cmpr_type')
    cnd_diag_info%metric_cmpr_type(1:nmetric) = metric_cmpr_type(1:nmetric)
 
    allocate( cnd_diag_info%metric_threshold(nmetric), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%metric_threshold')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_threshold')
    cnd_diag_info%metric_threshold(1:nmetric) = metric_threshold(1:nmetric)
 
    ! physical processes to monitor 
@@ -229,7 +264,7 @@ subroutine conditional_diag_readnl(nlfile)
    cnd_diag_info%nphysproc = nphysproc
 
    allocate( cnd_diag_info%physproc_name(nphysproc), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%physproc_name')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%physproc_name')
    do ii = 1,nphysproc
       cnd_diag_info%physproc_name(ii) = trim(adjustl(physproc_name(ii)))
    end do
@@ -245,7 +280,7 @@ subroutine conditional_diag_readnl(nlfile)
    cnd_diag_info%nfld_1lev = nfld
 
    allocate( cnd_diag_info%fld_name_1lev(nfld), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%fld_name_1lev')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%fld_name_1lev')
    do ii = 1,nfld
       cnd_diag_info%fld_name_1lev(ii) = trim(adjustl(fld_name_1lev(ii)))
    end do
@@ -261,7 +296,7 @@ subroutine conditional_diag_readnl(nlfile)
    cnd_diag_info%nfld_nlev = nfld
 
    allocate( cnd_diag_info%fld_name_nlev(nfld), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%fld_name_nlev')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%fld_name_nlev')
    do ii = 1,nfld
       cnd_diag_info%fld_name_nlev(ii) = trim(adjustl(fld_name_nlev(ii)))
    end do
@@ -277,10 +312,12 @@ subroutine conditional_diag_readnl(nlfile)
    cnd_diag_info%nfld_nlevp = nfld
 
    allocate( cnd_diag_info%fld_name_nlevp(nfld), stat=ierr)
-   if ( ierr /= 0 ) call endrun('conditional_diag_readnl: allocation error for cnd_diag_info%fld_name_nlevp')
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%fld_name_nlevp')
    do ii = 1,nfld
       cnd_diag_info%fld_name_nlevp(ii) = trim(adjustl(fld_name_nlevp(ii)))
    end do
+
+   ! output to history file(s)
 
    cnd_diag_info%l_output_state = l_output_state
    cnd_diag_info%l_output_tend  = l_output_tend 
@@ -292,15 +329,15 @@ subroutine conditional_diag_readnl(nlfile)
 
     if (cnd_diag_info%nmetric == 0) then
 
-      write(iulog,*)'====================================================='
-      write(iulog,*)'    *** Conditional diagnostics NOT requested ***'
-      write(iulog,*)'-----------------------------------------------------'
+      write(iulog,*)'==========================================================='
+      write(iulog,*)'       *** Conditional diagnostics NOT requested ***'
+      write(iulog,*)'==========================================================='
 
     else
 
-      write(iulog,*)'=================================================='
-      write(iulog,*)'    *** Conditional diagnostics requested ***'
-      write(iulog,*)'--------------------------------------------------'
+      write(iulog,*)'==========================================================='
+      write(iulog,*)'       *** Conditional diagnostics requested ***'
+      write(iulog,*)'-----------------------------------------------------------'
 
       write(iulog,*)
       write(iulog,'(4x,2x,a10,a6,a12,a20)')'metric','nlev','cmpr type','threshold'
@@ -343,11 +380,11 @@ subroutine conditional_diag_readnl(nlfile)
       write(iulog,*)' l_output_state = ',l_output_state
       write(iulog,*)' l_output_tend  = ',l_output_tend
       write(iulog,*)
-      write(iulog,*)'=================================================='
+      write(iulog,*)'==========================================================='
       write(iulog,*)
 
-   end if
-  end if
+   end if ! cnd_diag_info%nmetric == 0
+  end if  ! masterproc
 
 end subroutine conditional_diag_readnl
 

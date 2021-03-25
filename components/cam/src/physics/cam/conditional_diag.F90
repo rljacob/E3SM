@@ -181,28 +181,6 @@ subroutine conditional_diag_readnl(nlfile)
       close(unitn)
    end if ! masterproc
 
-   !  BGN: tmp code for testing !!!!!!!!!!!!!!!!!!!!
-
-   ! metric_name     (1:3) = (/"CAPE","SSATW","SSATI"/)
-   ! metric_nver     (1:3) = (/1,     72,     72/)
-   ! metric_cmpr_type(1:3) = (/GT,    GT,     GT/)
-   ! metric_threshold(1:3) = (/0._r8, 0._r8, 0._r8/)
-
-   ! nphysproc = 2
-   ! physproc_name(1) = "zm_conv_tend"
-   ! physproc_name(2) = "cam_radheat" 
-
-   ! fld_name_1lev(1) = "CAPE"
-
-   ! ii = 0
-   ! ii = ii + 1 ; fld_name_nlev(ii) = "Q"
-   ! ii = ii + 1 ; fld_name_nlev(ii) = "SSATW"
-   ! ii = ii + 1 ; fld_name_nlev(ii) = "QSATW"
-   ! ii = ii + 1 ; fld_name_nlev(ii) = "SSATI"
-   ! ii = ii + 1 ; fld_name_nlev(ii) = "QSATI"
-
-   !  END: tmp code for testing !!!!!!!!!!!!!!!!!!!!
-
 #ifdef SPMD
    ! Broadcast namelist variables
 
@@ -402,44 +380,44 @@ subroutine conditional_diag_alloc( psetcols, pver, info, diag )
   integer :: nphysproc
   integer :: ierr
 
+  character(len=*), parameter :: subname = 'conditional_diag_alloc'
+
   nmetric    = info% nmetric
   nfld_1lev  = info% nfld_1lev
   nfld_nlev  = info% nfld_nlev
   nfld_nlevp = info% nfld_nlevp
-  nphysproc = info% nphysproc
+  nphysproc  = info% nphysproc
 
   ! different groups of diagnostics correspond to different conditions
 
   allocate( diag(nmetric), stat=ierr)
-  if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag')
+  if ( ierr /= 0 ) call endrun(subname//': allocation error for diag')
 
-  ! the metric field, which might have 1, pver, or pver+1 vertical levels
+  ! the metric fields, which might have 1, pver, or pver+1 vertical levels
 
   do im = 1,nmetric
      allocate( diag(im)% metric( psetcols, info%metric_nver(im) ), stat=ierr)
-     if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag%metric')
+     if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%metric')
   end do
 
-  ! diagnostics with only vertical level
+  ! diagnostical fields with only vertical level
 
   if (nfld_1lev > 0) then
-
-     do im = 1,nmetric
+   do im = 1,nmetric
 
         allocate( diag(im)% fld_1lev( nfld_1lev ), stat=ierr)
-        if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag%fld_1lev')
+        if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_1lev')
 
-        ! field values and tendencies of each diagnostic variables with 1 vertical levels
-        do ifld = 1, nfld_1lev
+        do ifld = 1, nfld_1lev  ! values and tendencies of each field
 
            allocate( diag(im)%fld_1lev(ifld)% cur(psetcols,1), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag%fld_1lev%cur')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_1lev%cur')
 
            allocate( diag(im)%fld_1lev(ifld)% val(psetcols,1,nphysproc), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag%fld_1lev%val')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_1lev%val')
 
            allocate( diag(im)%fld_1lev(ifld)% tnd(psetcols,1,nphysproc), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_allocate error: allocation error for diag%fld_1lev%tnd')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_1lev%tnd')
 
            diag(im)%fld_1lev(ifld)% cur(:,:)   = inf
            diag(im)%fld_1lev(ifld)% val(:,:,:) = inf
@@ -447,29 +425,27 @@ subroutine conditional_diag_alloc( psetcols, pver, info, diag )
 
         end do !ifld
 
-      end do   !im
+    end do   !im
    end if
 
-   ! diagnostics with pver vertical levels (typically physical variables located at layer midpoints)
+   ! diagnostical fields with pver vertical levels (typically physical variables located at layer midpoints)
 
    if (nfld_nlev > 0) then
-
-      do im = 1,nmetric
+    do im = 1,nmetric
 
          allocate( diag(im)% fld_nlev( nfld_nlev ), stat=ierr)
-         if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlev')
+         if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlev')
 
-         ! field values and tendencies of each diagnostic variables with 1 vertical levels
-         do ifld = 1, nfld_nlev
+         do ifld = 1, nfld_nlev  ! values and tendencies of each field
 
             allocate( diag(im)%fld_nlev(ifld)% cur(psetcols,pver), stat=ierr)
-            if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlev%cur')
+            if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlev%cur')
 
             allocate( diag(im)%fld_nlev(ifld)% val(psetcols,pver,nphysproc), stat=ierr)
-            if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlev%val')
+            if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlev%val')
 
             allocate( diag(im)%fld_nlev(ifld)% tnd(psetcols,pver,nphysproc), stat=ierr)
-            if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlev%tnd')
+            if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlev%tnd')
 
             diag(im)%fld_nlev(ifld)% cur(:,:)   = inf
             diag(im)%fld_nlev(ifld)% val(:,:,:) = inf
@@ -477,42 +453,41 @@ subroutine conditional_diag_alloc( psetcols, pver, info, diag )
 
          end do !ifld
 
-      end do   !im
+    end do   !im
    end if
 
-   ! diagnostics with pver vertical levels (typically physical variables located at layer interfaces)
+   ! diagnostical fields with pver+1 vertical levels (typically physical variables located at layer interfaces)
    if (nfld_nlevp > 0) then
-
-      do im = 1,nmetric
+    do im = 1,nmetric
 
         allocate( diag(im)% fld_nlevp( nfld_nlevp ), stat=ierr)
-        if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlevp')
+        if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlevp')
 
-        ! field values and tendencies of each diagnostic variables with 1 vertical levels
-        do ifld = 1, nfld_nlevp
+        do ifld = 1, nfld_nlevp  ! values and tendencies of each field
 
            allocate( diag(im)%fld_nlevp(ifld)% cur(psetcols,pver+1), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlevp%cur')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlevp%cur')
 
            allocate( diag(im)%fld_nlevp(ifld)% val(psetcols,pver+1,nphysproc), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlevp%val')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlevp%val')
 
            allocate( diag(im)%fld_nlevp(ifld)% tnd(psetcols,pver+1,nphysproc), stat=ierr)
-           if ( ierr /= 0 ) call endrun('conditional_diag_alloc error: allocation error for diag%fld_nlevp%tnd')
+           if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%fld_nlevp%tnd')
 
            diag(im)%fld_nlevp(ifld)% cur(:,:)   = inf
            diag(im)%fld_nlevp(ifld)% val(:,:,:) = inf
            diag(im)%fld_nlevp(ifld)% tnd(:,:,:) = inf
 
         end do !ifld
-      end do   !im
 
+    end do   !im
    end if
 
 end subroutine conditional_diag_alloc
 
 !subroutine conditional_diag_dealloc
 !end subroutine conditional_diag_alloc
+
 
 
 

@@ -15,6 +15,7 @@ module physics_types
   use phys_control, only: waccmx_is, use_mass_borrower
   use shr_const_mod,only: shr_const_rwv
   use perf_mod,     only: t_startf, t_stopf
+  use conditional_diag, only: cnd_diag_info_t, cnd_diag_t, conditional_diag_alloc
 
   implicit none
   private          ! Make default type private to the module
@@ -109,6 +110,10 @@ module physics_types
      integer :: ulatcnt, &! number of unique lats in chunk
                 uloncnt   ! number of unique lons in chunk
 
+     !-- conditional diagnostics
+     !
+     type(cnd_diag_t), allocatable :: cnd_diag(:)
+
   end type physics_state
 
 !-------------------------------------------------------------------------------
@@ -167,12 +172,13 @@ module physics_types
 !===============================================================================
 contains
 !===============================================================================
-  subroutine physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, psetcols)
+  subroutine physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, psetcols, cnd_diag_info)
     implicit none
     type(physics_state), pointer :: phys_state(:)
     type(physics_tend), pointer :: phys_tend(:)
     integer, intent(in) :: begchunk, endchunk
     integer, intent(in) :: psetcols
+    type(cnd_diag_info_t),intent(in) :: cnd_diag_info
     
     integer :: ierr=0, lchnk
     type(physics_state), pointer :: state
@@ -185,7 +191,7 @@ contains
     end if
 
     do lchnk=begchunk,endchunk
-       call physics_state_alloc(phys_state(lchnk),lchnk,pcols)
+       call physics_state_alloc(phys_state(lchnk),lchnk,pcols, cnd_diag_info, endchunk)
     end do
 
     allocate(phys_tend(begchunk:endchunk), stat=ierr)
@@ -1473,7 +1479,7 @@ end subroutine set_dry_to_wet
 
 !===============================================================================
 
-subroutine physics_state_alloc(state,lchnk,psetcols)
+subroutine physics_state_alloc(state,lchnk,psetcols,cnd_diag_info, endchunk)
 
   use infnan, only : inf, assignment(=)
 
@@ -1483,6 +1489,9 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   integer,intent(in)                 :: lchnk
 
   integer, intent(in)                :: psetcols
+
+  type(cnd_diag_info_t),intent(in),optional :: cnd_diag_info
+  integer, intent(in),optional :: endchunk
 
   integer :: ierr=0, i
 
@@ -1636,6 +1645,33 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%te_cur(:) = inf
   state%tw_ini(:) = inf
   state%tw_cur(:) = inf
+
+  ! Allocate memeory for conditional diagnostics
+
+  if (present(cnd_diag_info)) then
+  if (cnd_diag_info%nmetric > 0) then
+
+     call conditional_diag_alloc( psetcols, pver, cnd_diag_info, state%diag ) !in, in, in, inout
+
+     if (present(endchunk)) then
+     if (masterproc .and. lchnk==endchunk ) then
+
+        write(iulog,*)
+        write(iulog,*) "====================================================================="
+        write(iulog,*) " Finished memory allocation for conditional diagnostics including:"
+        write(iulog,*) "   * ", nmetric,   " metrics"
+        write(iulog,*) "   * ", nphysproc, " physical/dynamical processes"
+        write(iulog,*) "   * ", nfld_1lev, " fields with 1   vertical level"
+        write(iulog,*) "   * ", nfld_nlev, " fields with n   vertical levels"
+        write(iulog,*) "   * ", nfld_nlevp," fields with n+1 vertical levels"
+        write(iulog,*) "====================================================================="
+        write(iulog,*)
+
+     end if
+     end if
+
+  end if
+  end if
 
 end subroutine physics_state_alloc
 

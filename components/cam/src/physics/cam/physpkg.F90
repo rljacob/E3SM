@@ -651,7 +651,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
 end subroutine phys_inidat
 
 
-subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
+subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out, cnd_diag_info )
 
     !----------------------------------------------------------------------- 
     ! 
@@ -719,6 +719,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
     use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
+    use conditional_diag,   only: cnd_diag_info_t
 
 
     ! Input/output arguments
@@ -728,13 +729,15 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
+    type(cnd_diag_info_t),intent(in)   :: cnd_diag_info
+
     ! local variables
     integer :: lchnk
     real(r8) :: dp1 = huge(1.0_r8) !set in namelist, assigned in cloud_fraction.F90
 
     !-----------------------------------------------------------------------
 
-    call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
+    call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols, cnd_diag_info)
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))

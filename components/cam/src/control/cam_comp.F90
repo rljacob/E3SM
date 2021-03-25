@@ -20,6 +20,7 @@ module cam_comp
    use perf_mod
    use cam_logfile,       only: iulog
    use physics_buffer,            only: physics_buffer_desc
+   use conditional_diag,  only: cnd_diag_info
 
    implicit none
    private
@@ -175,7 +176,7 @@ subroutine cam_init( cam_out, cam_in, mpicom_atm, &
    end if
 
 
-   call phys_init( phys_state, phys_tend, pbuf2d,  cam_out )
+   call phys_init( phys_state, phys_tend, pbuf2d,  cam_out, cnd_diag_info )
 
    call bldfld ()       ! master field list (if branch, only does hash tables)
 

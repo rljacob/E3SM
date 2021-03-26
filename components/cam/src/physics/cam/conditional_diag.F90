@@ -20,9 +20,10 @@ module conditional_diag
 
   ! Subroutines
 
+  public conditional_diag_readnl
   public conditional_diag_alloc
  !public conditional_diag_dealloc
-  public conditional_diag_readnl
+  public conditional_diag_output_init
 
   ! module parameters
 
@@ -470,7 +471,100 @@ end subroutine conditional_diag_alloc
 !subroutine conditional_diag_dealloc
 !end subroutine conditional_diag_alloc
 
+subroutine conditional_diag_output_init()
 
+  use cam_history,   only: addfld, horiz_only, add_default, max_fieldname_len
+
+  integer          :: im, ifld, iphys, ii
+  character(len=2) :: imstr
+  character(len=4) :: val_tnd_suff(2), suff
+  logical          :: l_cycle(2)
+
+  character(len=max_fieldname_len) :: output_fld_name
+
+  character(len=*),parameter :: subname = 'conditional_diag_output_init'
+
+  if (cnd_diag_info%nmetric==0) return
+
+  do im = 1,nmetric
+
+     ! imstr is the metric index as a string; will be appended to output field names
+     write(imstr,'(i2.2)') im
+
+     !----------------------------------------
+     ! register the metric itself for output
+     !----------------------------------------
+     output_fld_name = trim(cnd_diag_info%metric_name(im)//'_cnd'//imstr
+
+     select case(cnd_diag_info%metric_nver(im))
+     case(1)
+       call addfld(trim(output_fld_name), horiz_only, 'A',' ',' ') 
+     case(pver)
+       call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
+     case(pverp)
+       call addfld(trim(output_fld_name), (/'ilev'/), 'A',' ',' ') 
+     case default
+       call endrun(subname//': invalid number of vertical levers')
+     end select
+
+     call add_defaullt(trim(output_fld_name),1,' ')
+
+     !----------------------------------------
+     ! register the diagnostics for output
+     !----------------------------------------
+     val_tnd_suff = (/"_val","_tnd"/)
+     l_cycle      = .not.(/cnd_diag_info%l_output_state, cnd_diag_info%l_output_tend/)
+
+     do ii = 1,2 ! field value (state) or tendency
+
+        if (l_cycle(ii)) cycle
+
+        suf = val_tnd_suf(ii)
+
+        ! diagnostic fields with no vertical distribution
+
+        do ifld = 1,cnd_diag_info%nfld_1lev
+        do iphys = 1,cnd_diag_info%nphysproc
+
+           output_fld_name = trim(cnd_diag_info%fld_1lev_name(ifld)//'_cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%physproc_name(iphys))//suff
+
+           call addfld(trim(output_fld_name), horiz_only,  'A',' ',' ') 
+           call add_defaullt(trim(output_fld_name),1,' ')
+        end do
+        end do
+
+        ! diagnostic fields located at layer midpoints
+
+        do ifld = 1,cnd_diag_info%nfld_nlev
+        do iphys = 1,cnd_diag_info%nphysproc
+
+           output_fld_name = trim(cnd_diag_info%fld_nlev_name(ifld)//'_cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%physproc_name(iphys))//suff
+
+           call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
+           call add_defaullt(trim(output_fld_name),1,' ')
+        end do
+        end do
+
+        ! diagnostic fields located at layer interfaces
+
+        do ifld = 1,cnd_diag_info%nfld_nlevp
+        do iphys = 1,cnd_diag_info%nphysproc
+
+           output_fld_name = trim(cnd_diag_info%fld_nlevp_name(ifld)//'_cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%physproc_name(iphys))//suff
+
+           call addfld(trim(output_fld_name), (/'ilev'/),  'A',' ',' ') 
+           call add_defaullt(trim(output_fld_name),1,' ')
+        end do
+        end do
+
+     end do ! ii = 1,2, field value (state) or tendency
+
+  end do ! im = 1,nmetric
+
+end subroutine conditional_diag_output_init
 
 
 end module conditional_diag

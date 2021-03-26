@@ -773,7 +773,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out, cnd_diag_info )
 
     ! addfld and add_default calls for conditional diagnostics
 
-    call conditional_diag_output_init()
+    call conditional_diag_output_init(pver)
 
     ! For adiabatic or ideal physics don't need to initialize any of the
     ! parameterizations below:

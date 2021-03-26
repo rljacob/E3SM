@@ -471,9 +471,12 @@ end subroutine conditional_diag_alloc
 !subroutine conditional_diag_dealloc
 !end subroutine conditional_diag_alloc
 
-subroutine conditional_diag_output_init()
+subroutine conditional_diag_output_init(pver)
 
-  use cam_history,   only: addfld, horiz_only, add_default, max_fieldname_len
+  use cam_history,         only: addfld, horiz_only, add_default
+  use cam_history_support, only: max_fieldname_len
+
+  integer,intent(in) :: pver
 
   integer          :: im, ifld, iphys, ii
   character(len=2) :: imstr
@@ -486,7 +489,7 @@ subroutine conditional_diag_output_init()
 
   if (cnd_diag_info%nmetric==0) return
 
-  do im = 1,nmetric
+  do im = 1,cnd_diag_info%nmetric
 
      ! imstr is the metric index as a string; will be appended to output field names
      write(imstr,'(i2.2)') im
@@ -494,20 +497,25 @@ subroutine conditional_diag_output_init()
      !----------------------------------------
      ! register the metric itself for output
      !----------------------------------------
-     output_fld_name = trim(cnd_diag_info%metric_name(im)//'_cnd'//imstr
+     output_fld_name = trim(cnd_diag_info%metric_name(im))//'_cnd'//imstr
 
-     select case(cnd_diag_info%metric_nver(im))
-     case(1)
+     if (cnd_diag_info%metric_nver(im)==1) then
+
        call addfld(trim(output_fld_name), horiz_only, 'A',' ',' ') 
-     case(pver)
-       call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
-     case(pverp)
-       call addfld(trim(output_fld_name), (/'ilev'/), 'A',' ',' ') 
-     case default
-       call endrun(subname//': invalid number of vertical levers')
-     end select
 
-     call add_defaullt(trim(output_fld_name),1,' ')
+     elseif(cnd_diag_info%metric_nver(im)==pver) then
+
+       call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
+
+     elseif(cnd_diag_info%metric_nver(im)==pver+1) then
+
+       call addfld(trim(output_fld_name), (/'ilev'/), 'A',' ',' ') 
+
+     else 
+       call endrun(subname//': invalid number of vertical levers')
+     end if 
+
+     call add_default(trim(output_fld_name),1,' ')
 
      !----------------------------------------
      ! register the diagnostics for output
@@ -519,18 +527,18 @@ subroutine conditional_diag_output_init()
 
         if (l_cycle(ii)) cycle
 
-        suf = val_tnd_suf(ii)
+        suff = val_tnd_suff(ii)
 
         ! diagnostic fields with no vertical distribution
 
         do ifld = 1,cnd_diag_info%nfld_1lev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_1lev_name(ifld)//'_cnd'//imstr//'_'// &
+           output_fld_name = trim(cnd_diag_info%fld_name_1lev(ifld))//'_cnd'//imstr//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), horiz_only,  'A',' ',' ') 
-           call add_defaullt(trim(output_fld_name),1,' ')
+           call add_default(trim(output_fld_name),1,' ')
         end do
         end do
 
@@ -539,11 +547,11 @@ subroutine conditional_diag_output_init()
         do ifld = 1,cnd_diag_info%nfld_nlev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_nlev_name(ifld)//'_cnd'//imstr//'_'// &
+           output_fld_name = trim(cnd_diag_info%fld_name_nlev(ifld))//'_cnd'//imstr//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
-           call add_defaullt(trim(output_fld_name),1,' ')
+           call add_default(trim(output_fld_name),1,' ')
         end do
         end do
 
@@ -552,11 +560,11 @@ subroutine conditional_diag_output_init()
         do ifld = 1,cnd_diag_info%nfld_nlevp
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_nlevp_name(ifld)//'_cnd'//imstr//'_'// &
+           output_fld_name = trim(cnd_diag_info%fld_name_nlevp(ifld))//'_cnd'//imstr//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), (/'ilev'/),  'A',' ',' ') 
-           call add_defaullt(trim(output_fld_name),1,' ')
+           call add_default(trim(output_fld_name),1,' ')
         end do
         end do
 

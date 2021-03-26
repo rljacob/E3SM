@@ -497,7 +497,7 @@ subroutine conditional_diag_output_init(pver)
      !----------------------------------------
      ! register the metric itself for output
      !----------------------------------------
-     output_fld_name = trim(cnd_diag_info%metric_name(im))//'_cnd'//imstr
+     output_fld_name = 'cnd'//imstr//'_'//trim(cnd_diag_info%metric_name(im))
 
      if (cnd_diag_info%metric_nver(im)==1) then
 
@@ -534,7 +534,8 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_1lev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_name_1lev(ifld))//'_cnd'//imstr//'_'// &
+           output_fld_name = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_1lev(ifld))//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), horiz_only,  'A',' ',' ') 
@@ -547,7 +548,8 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_nlev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_name_nlev(ifld))//'_cnd'//imstr//'_'// &
+           output_fld_name = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_nlev(ifld))//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
@@ -560,7 +562,8 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_nlevp
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = trim(cnd_diag_info%fld_name_nlevp(ifld))//'_cnd'//imstr//'_'// &
+           output_fld_name = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_nlevp(ifld))//'_'// &
                              trim(cnd_diag_info%physproc_name(iphys))//suff
 
            call addfld(trim(output_fld_name), (/'ilev'/),  'A',' ',' ') 

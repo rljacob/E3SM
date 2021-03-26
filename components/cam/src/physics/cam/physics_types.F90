@@ -1482,6 +1482,7 @@ end subroutine set_dry_to_wet
 subroutine physics_state_alloc(state,lchnk,psetcols,cnd_diag_info, endchunk)
 
   use infnan, only : inf, assignment(=)
+  use spmd_utils,     only: masterproc
 
 ! allocate the individual state components
 
@@ -1492,6 +1493,7 @@ subroutine physics_state_alloc(state,lchnk,psetcols,cnd_diag_info, endchunk)
 
   type(cnd_diag_info_t),intent(in),optional :: cnd_diag_info
   integer, intent(in),optional :: endchunk
+  integer :: im
 
   integer :: ierr=0, i
 
@@ -1651,22 +1653,31 @@ subroutine physics_state_alloc(state,lchnk,psetcols,cnd_diag_info, endchunk)
   if (present(cnd_diag_info)) then
   if (cnd_diag_info%nmetric > 0) then
 
-     call conditional_diag_alloc( psetcols, pver, cnd_diag_info, state%diag ) !in, in, in, inout
+     allocate( state%cnd_diag( cnd_diag_info%nmetric ), stat=ierr)
+     if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%cnd_diag')
+
+     do im = 1,cnd_diag_info%nmetric
+        call conditional_diag_alloc( psetcols, pver, &
+                                     cnd_diag_info%metric_nver(im), &
+                                     cnd_diag_info%nphysproc, &
+                                     cnd_diag_info%nfld_1lev, &
+                                     cnd_diag_info%nfld_nlev, &
+                                     cnd_diag_info%nfld_nlevp,&
+                                     state%cnd_diag(im) )
+     end do
 
      if (present(endchunk)) then
      if (masterproc .and. lchnk==endchunk ) then
-
         write(iulog,*)
         write(iulog,*) "====================================================================="
         write(iulog,*) " Finished memory allocation for conditional diagnostics including:"
-        write(iulog,*) "   * ", nmetric,   " metrics"
-        write(iulog,*) "   * ", nphysproc, " physical/dynamical processes"
-        write(iulog,*) "   * ", nfld_1lev, " fields with 1   vertical level"
-        write(iulog,*) "   * ", nfld_nlev, " fields with n   vertical levels"
-        write(iulog,*) "   * ", nfld_nlevp," fields with n+1 vertical levels"
+        write(iulog,*) cnd_diag_info%nmetric,   " metrics"
+        write(iulog,*) cnd_diag_info%nphysproc, " physical/dynamical processes"
+        write(iulog,*) cnd_diag_info%nfld_1lev, " fields with 1   vertical level"
+        write(iulog,*) cnd_diag_info%nfld_nlev, " fields with n   vertical levels"
+        write(iulog,*) cnd_diag_info%nfld_nlevp," fields with n+1 vertical levels"
         write(iulog,*) "====================================================================="
         write(iulog,*)
-
      end if
      end if
 

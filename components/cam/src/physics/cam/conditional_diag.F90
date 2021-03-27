@@ -28,18 +28,19 @@ module conditional_diag
   ! module parameters
 
   integer, parameter :: nmetric_max = 10
-  integer, parameter :: metric_name_maxlen = 8
+  integer, parameter :: mname_maxlen = 8
 
   integer, parameter :: nfld_max = 10
-  integer, parameter :: fld_name_maxlen = 8 
+  integer, parameter :: fname_maxlen = 8 
 
-  integer, parameter :: nphysproc_max  = 100
-  integer, parameter :: physproc_name_maxlen  = 20
+  integer, parameter :: nphysproc_max   = 100
+  integer, parameter :: ptndname_maxlen = 20
+  integer, parameter :: poutname_maxlen = 3
 
-  integer, parameter :: GEQ = 10
-  integer, parameter :: GT  = 11
-  integer, parameter :: LEQ = -10
-  integer, parameter :: LT  = -11
+  integer, parameter :: GT  = 1
+  integer, parameter :: GEQ = 2
+  integer, parameter :: LT  = -1
+  integer, parameter :: LEQ = -2
 
   !-------------------------------------------------------------------------------
   type cnd_diag_info_t
@@ -57,26 +58,31 @@ module conditional_diag
     ! the physical processes and physical fields to monitor are the same
     ! for different metrics
 
-    integer                       :: nmetric = 0          ! total # of metrics used in this simulation
-    character(len=16),allocatable :: metric_name(:)       ! shape = (nmetric); name of the metric
-    integer,allocatable           :: metric_nver(:)       ! shape = (nmetric); # of vertical levels
-    real(r8),allocatable          :: metric_threshold(:)  ! shape = (nmetric); threshold value for conditional sampling 
-    integer,allocatable           :: metric_cmpr_type(:)  ! shape = (nmetric); see module parameters
+    integer                      :: nmetric = 0          ! total # of metrics used in this simulation
+    character(len=mname_maxlen),&
+                     allocatable :: metric_name(:)       ! shape = (nmetric); name of the metric
+    integer,allocatable          :: metric_nver(:)       ! shape = (nmetric); # of vertical levels
+    real(r8),allocatable         :: metric_threshold(:)  ! shape = (nmetric); threshold value for conditionalsampling 
+    integer,allocatable          :: metric_cmpr_type(:)  ! shape = (nmetric); see module parameters
 
     ! Physical processes to be monitored
-    integer                        :: nphysproc = 0        ! total # of processes
-    character(len=16), allocatable :: physproc_name(:)     ! process labels 
+    integer                          :: nphysproc = 0    ! total # of processes
+    character(len=ptndname_maxlen),&
+                         allocatable :: ptend_name(:)    ! process labels (need to match ptend%name)
+    character(len=poutname_maxlen),&
+                         allocatable :: proc_outname(:)  ! process labels (user specified 3-character 
+                                                         ! labels for keeping output variable names short 
 
     ! Physical fields to be monitored. Each field can have 1, nlev, or nlev+1 vertical levels
 
-    integer                       ::     nfld_1lev = 0
-    character(len=16),allocatable :: fld_name_1lev(:)     ! shape = (nfld_1lev)
+    integer                                 ::     nfld_1lev = 0
+    character(len=fname_maxlen),allocatable :: fld_name_1lev(:)     ! shape = (nfld_1lev)
 
-    integer                       ::     nfld_nlev   = 0
-    character(len=16),allocatable :: fld_name_nlev (:)    ! shape = (nfld_nlev)
+    integer                                 ::     nfld_nlev = 0
+    character(len=fname_maxlen),allocatable :: fld_name_nlev (:)    ! shape = (nfld_nlev)
 
-    integer                       ::     nfld_nlevp  = 0
-    character(len=16),allocatable :: fld_name_nlevp(:)    ! shape = (nfld_nlevp)
+    integer                                 ::     nfld_nlevp = 0
+    character(len=fname_maxlen),allocatable :: fld_name_nlevp(:)    ! shape = (nfld_nlevp)
 
   end type cnd_diag_info_t
 
@@ -84,6 +90,7 @@ module conditional_diag
   type cnd_diag_t
 
     real(r8),                     allocatable :: metric (:,:)     ! shape = (pcols, info%metric_nver(imetric))
+    real(r8),                     allocatable :: flag   (:,:)     ! shape = (pcols, info%metric_nver(imetric))
     type(snapshot_and_tendency_t),allocatable :: fld_1lev (:)     ! shape = (info%nfld_1lev)
     type(snapshot_and_tendency_t),allocatable :: fld_nlev (:)     ! shape = (info%nfld_nlev)
     type(snapshot_and_tendency_t),allocatable :: fld_nlevp(:)     ! shape = (info%nfld_nlevp1)
@@ -124,16 +131,17 @@ subroutine conditional_diag_readnl(nlfile)
 
    ! Local variables for reading namelist
 
-   character(len=metric_name_maxlen)   :: metric_name(nmetric_max)
-   integer  :: metric_nver(nmetric_max)
-   integer  :: metric_cmpr_type(nmetric_max)
-   real(r8) :: metric_threshold(nmetric_max)
+   character(len=mname_maxlen)   :: metric_name     (nmetric_max)
+   integer                       :: metric_nver     (nmetric_max)
+   integer                       :: metric_cmpr_type(nmetric_max)
+   real(r8)                      :: metric_threshold(nmetric_max)
 
-   character(len=physproc_name_maxlen) :: physproc_name(nphysproc_max)
+   character(len=ptndname_maxlen) :: ptend_name(nphysproc_max)
+   character(len=poutname_maxlen) :: proc_outname(nphysproc_max)
 
-   character(len=fld_name_maxlen) :: fld_name_1lev (nfld_max)
-   character(len=fld_name_maxlen) :: fld_name_nlev (nfld_max)
-   character(len=fld_name_maxlen) :: fld_name_nlevp(nfld_max)
+   character(len=fname_maxlen) :: fld_name_1lev (nfld_max)
+   character(len=fname_maxlen) :: fld_name_nlev (nfld_max)
+   character(len=fname_maxlen) :: fld_name_nlevp(nfld_max)
 
    logical :: l_output_state, l_output_tend
 
@@ -147,7 +155,7 @@ subroutine conditional_diag_readnl(nlfile)
    !-------
    namelist /conditional_diag_nl/  &
             metric_name, metric_nver, metric_cmpr_type, metric_threshold, &
-            physproc_name, fld_name_1lev, fld_name_nlev, fld_name_nlevp,  &
+            ptend_name, proc_outname, fld_name_1lev, fld_name_nlev, fld_name_nlevp,  &
             l_output_state, l_output_tend
 
    !----------------------------------------
@@ -158,7 +166,8 @@ subroutine conditional_diag_readnl(nlfile)
    metric_cmpr_type = 0
    metric_threshold = nan
 
-   physproc_name  = ' '
+   ptend_name     = ' '
+   proc_outname   = ' '
    fld_name_1lev  = ' '
    fld_name_nlev  = ' '
    fld_name_nlevp = ' '
@@ -190,7 +199,8 @@ subroutine conditional_diag_readnl(nlfile)
    call mpibcast(metric_cmpr_type, nmetric_max,                     mpiint,  0, mpicom)
    call mpibcast(metric_threshold, nmetric_max,                     mpir8,   0, mpicom)
 
-   call mpibcast(physproc_name,  nphysproc_max*len(physproc_name(1)), mpichar, 0, mpicom)
+   call mpibcast(ptend_name,    nphysproc_max*len(ptend_name(1)),   mpichar, 0, mpicom)
+   call mpibcast(proc_outname,  nphysproc_max*len(proc_outname(1)), mpichar, 0, mpicom)
 
    call mpibcast(fld_name_1lev,  nfld_max*len(fld_name_1lev(1)),  mpichar, 0, mpicom)
    call mpibcast(fld_name_nlev,  nfld_max*len(fld_name_nlev(1)),  mpichar, 0, mpicom)
@@ -235,17 +245,27 @@ subroutine conditional_diag_readnl(nlfile)
    ! physical processes to monitor 
 
    ii = 0
-   do while ( (ii+1) <= nphysproc_max .and. physproc_name(ii+1) /= ' ')
-      ii = ii + 1
+   do while ( (ii+1) <= nphysproc_max .and. ptend_name(ii+1) /= ' ')
+      if (proc_outname(ii+1)==' ') then
+         call endrun(subname//': be sure to specify proc_outname for each ptend_name')
+      else
+         ii = ii + 1
+      end if
    end do
    nphysproc = ii
 
    cnd_diag_info%nphysproc = nphysproc
 
-   allocate( cnd_diag_info%physproc_name(nphysproc), stat=ierr)
-   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%physproc_name')
+   allocate( cnd_diag_info%ptend_name(nphysproc), stat=ierr)
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%ptend_name')
    do ii = 1,nphysproc
-      cnd_diag_info%physproc_name(ii) = trim(adjustl(physproc_name(ii)))
+      cnd_diag_info%ptend_name(ii) = trim(adjustl(ptend_name(ii)))
+   end do
+
+   allocate( cnd_diag_info%proc_outname(nphysproc), stat=ierr)
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%proc_outname')
+   do ii = 1,nphysproc
+      cnd_diag_info%proc_outname(ii) = trim(adjustl(proc_outname(ii)))
    end do
 
    ! fields with 1 vertitical level
@@ -328,9 +348,9 @@ subroutine conditional_diag_readnl(nlfile)
       end do
 
       write(iulog,*)
-      write(iulog,'(4x,a20)')'physical process'
+      write(iulog,'(4x,a20,a20)')'ptend name', 'proc outname'
       do ii = 1,cnd_diag_info%nphysproc
-         write(iulog,'(i4.3,a20)') ii, cnd_diag_info%physproc_name(ii)
+         write(iulog,'(i4.3,a20)') ii, cnd_diag_info%ptend_name(ii), cnd_diag_info%proc_outname(ii)
       end do
       write(iulog,*)'--------------------------------------------------'
 
@@ -388,6 +408,9 @@ subroutine conditional_diag_alloc( psetcols, pver, metric_nver, nphysproc, &
 
   allocate( diag% metric(psetcols,metric_nver), stat=ierr)
   if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%metric')
+
+  allocate( diag% flag  (psetcols,metric_nver), stat=ierr)
+  if ( ierr /= 0 ) call endrun(subname//': allocation error for diag%flag')
 
   ! diagnostical fields with only vertical level
 
@@ -479,11 +502,11 @@ subroutine conditional_diag_output_init(pver)
   integer,intent(in) :: pver
 
   integer          :: im, ifld, iphys, ii
-  character(len=2) :: imstr
   character(len=4) :: val_tnd_suff(2), suff
   logical          :: l_cycle(2)
 
   character(len=max_fieldname_len) :: output_fld_name
+  character(len=max_fieldname_len) :: output_fld_name2
 
   character(len=*),parameter :: subname = 'conditional_diag_output_init'
 
@@ -491,31 +514,34 @@ subroutine conditional_diag_output_init(pver)
 
   do im = 1,cnd_diag_info%nmetric
 
-     ! imstr is the metric index as a string; will be appended to output field names
-     write(imstr,'(i2.2)') im
 
      !----------------------------------------
      ! register the metric itself for output
      !----------------------------------------
-     output_fld_name = 'cnd'//imstr//'_'//trim(cnd_diag_info%metric_name(im))
+     output_fld_name  = metric_name_in_output( im, cnd_diag_info )
+     output_fld_name2 =   flag_name_in_output( im, cnd_diag_info )
 
      if (cnd_diag_info%metric_nver(im)==1) then
 
-       call addfld(trim(output_fld_name), horiz_only, 'A',' ',' ') 
+       call addfld(trim(output_fld_name ), horiz_only, 'A',' ',' ') 
+       call addfld(trim(output_fld_name2), horiz_only, 'A',' ',' ') 
 
      elseif(cnd_diag_info%metric_nver(im)==pver) then
 
-       call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
+       call addfld(trim(output_fld_name ), (/'lev'/),  'A',' ',' ') 
+       call addfld(trim(output_fld_name2), horiz_only, 'A',' ',' ') 
 
      elseif(cnd_diag_info%metric_nver(im)==pver+1) then
 
-       call addfld(trim(output_fld_name), (/'ilev'/), 'A',' ',' ') 
+       call addfld(trim(output_fld_name ), (/'ilev'/), 'A',' ',' ') 
+       call addfld(trim(output_fld_name2), (/'ilev'/), 'A',' ',' ') 
 
      else 
        call endrun(subname//': invalid number of vertical levers')
      end if 
 
-     call add_default(trim(output_fld_name),1,' ')
+     call add_default(trim(output_fld_name ),1,' ')
+     call add_default(trim(output_fld_name2),1,' ')
 
      !----------------------------------------
      ! register the diagnostics for output
@@ -534,9 +560,7 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_1lev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = 'cnd'//imstr//'_'// &
-                             trim(cnd_diag_info%fld_name_1lev(ifld))//'_'// &
-                             trim(cnd_diag_info%physproc_name(iphys))//suff
+           output_fld_name = fld_1lev_name_in_output( im, ifld, iphys, suff, cnd_diag_info)
 
            call addfld(trim(output_fld_name), horiz_only,  'A',' ',' ') 
            call add_default(trim(output_fld_name),1,' ')
@@ -548,9 +572,7 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_nlev
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = 'cnd'//imstr//'_'// &
-                             trim(cnd_diag_info%fld_name_nlev(ifld))//'_'// &
-                             trim(cnd_diag_info%physproc_name(iphys))//suff
+           output_fld_name = fld_nlev_name_in_output( im, ifld, iphys, suff, cnd_diag_info)
 
            call addfld(trim(output_fld_name), (/'lev'/),  'A',' ',' ') 
            call add_default(trim(output_fld_name),1,' ')
@@ -562,9 +584,7 @@ subroutine conditional_diag_output_init(pver)
         do ifld = 1,cnd_diag_info%nfld_nlevp
         do iphys = 1,cnd_diag_info%nphysproc
 
-           output_fld_name = 'cnd'//imstr//'_'// &
-                             trim(cnd_diag_info%fld_name_nlevp(ifld))//'_'// &
-                             trim(cnd_diag_info%physproc_name(iphys))//suff
+           output_fld_name = fld_nlevp_name_in_output( im, ifld, iphys, suff, cnd_diag_info)
 
            call addfld(trim(output_fld_name), (/'ilev'/),  'A',' ',' ') 
            call add_default(trim(output_fld_name),1,' ')
@@ -576,6 +596,85 @@ subroutine conditional_diag_output_init(pver)
   end do ! im = 1,nmetric
 
 end subroutine conditional_diag_output_init
+
+!======================================================
+function metric_name_in_output( im, cnd_diag_info )
+
+   integer,               intent(in)  :: im
+   type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
+   character(len=*),      intent(out) :: metric_name_in_output
+
+   character(len=2) :: imstr ! metric index as a string
+
+   write(imstr,'(i2.2)') im
+   metric_name_in_output = 'cnd'//imstr//'_'//trim(cnd_diag_info%metric_name(im))
+
+end function metric_name_in_output
+
+!======================================================
+function flag_name_in_output( im, cnd_diag_info )
+
+   integer,               intent(in)  :: im
+   type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
+   character(len=*),      intent(out) :: flag_name_in_output
+
+   character(len=2) :: imstr ! metric index as a string
+
+   write(imstr,'(i2.2)') im
+   flag_name_in_output = 'cnd'//imstr//'_'//trim(cnd_diag_info%metric_name(im))//'_flag'
+
+end function flag_name_in_output
+
+!======================================================
+function fld_1lev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+
+   integer,               intent(in)  :: im, ifld, iphys
+   character(len=*),      intent(in)  :: suff
+   type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
+   character(len=*),      intent(out) :: fld_1lev_name_in_output
+
+   character(len=2) :: imstr ! metric index as a string
+
+   write(imstr,'(i2.2)') im
+   fld_1lev_name_in_output = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_1lev(ifld))//'_'// &
+                             trim(cnd_diag_info%proc_outname(iphys))//suff
+
+end function fld_1lev_name_in_output
+
+!======================================================
+function fld_nlev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+
+   integer,               intent(in)  :: im, ifld, iphys
+   character(len=*),      intent(in)  :: suff
+   type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
+   character(len=*),      intent(out) :: fld_nlev_name_in_output
+
+   character(len=2) :: imstr ! metric index as a string
+
+   write(imstr,'(i2.2)') im
+   fld_nlev_name_in_output = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_nlev(ifld))//'_'// &
+                             trim(cnd_diag_info%proc_outname(iphys))//suff
+
+end function fld_nlev_name_in_output
+
+!======================================================
+function fld_nlevp_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+
+   integer,               intent(in)  :: im, ifld, iphys
+   character(len=*),      intent(in)  :: suff
+   type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
+   character(len=*),      intent(out) :: fld_nlevp_name_in_output
+
+   character(len=2) :: imstr ! metric index as a string
+
+   write(imstr,'(i2.2)') im
+   fld_nlevp_name_in_output = 'cnd'//imstr//'_'// &
+                             trim(cnd_diag_info%fld_name_nlevp(ifld))//'_'// &
+                             trim(cnd_diag_info%proc_outname(iphys))//suff
+
+end function fld_nlevp_name_in_output
 
 
 end module conditional_diag

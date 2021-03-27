@@ -350,28 +350,28 @@ subroutine conditional_diag_readnl(nlfile)
       write(iulog,*)
       write(iulog,'(4x,a20,a20)')'ptend name', 'proc outname'
       do ii = 1,cnd_diag_info%nphysproc
-         write(iulog,'(i4.3,a20)') ii, cnd_diag_info%ptend_name(ii), cnd_diag_info%proc_outname(ii)
+         write(iulog,'(i4.3,a20,a20)') ii, adjustr(cnd_diag_info%ptend_name(ii)), adjustr(cnd_diag_info%proc_outname(ii))
       end do
       write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
       write(iulog,'(4x,a30)')'field w/ 1 vertical level'
       do ii = 1,cnd_diag_info%nfld_1lev
-         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_1lev(ii)
+         write(iulog,'(i4.3,a30)') ii, adjustr(cnd_diag_info%fld_name_1lev(ii))
       end do
       write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
       write(iulog,'(4x,a30)')'field w/ nlev vertical levels'
       do ii = 1,cnd_diag_info%nfld_nlev
-         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_nlev(ii)
+         write(iulog,'(i4.3,a30)') ii, adjustr(cnd_diag_info%fld_name_nlev(ii))
       end do
       write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
       write(iulog,'(4x,a30)')'field w/ nlev+1 vertical levels'
       do ii = 1,cnd_diag_info%nfld_nlevp
-         write(iulog,'(i4.3,a30)') ii, cnd_diag_info%fld_name_nlevp(ii)
+         write(iulog,'(i4.3,a30)') ii, adjustr(cnd_diag_info%fld_name_nlevp(ii))
       end do
       write(iulog,*)'--------------------------------------------------'
 
@@ -600,9 +600,12 @@ end subroutine conditional_diag_output_init
 !======================================================
 function metric_name_in_output( im, cnd_diag_info )
 
+   use cam_history_support, only: max_fieldname_len
+
    integer,               intent(in)  :: im
    type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
-   character(len=*),      intent(out) :: metric_name_in_output
+
+   character(len=max_fieldname_len) :: metric_name_in_output
 
    character(len=2) :: imstr ! metric index as a string
 
@@ -614,9 +617,12 @@ end function metric_name_in_output
 !======================================================
 function flag_name_in_output( im, cnd_diag_info )
 
+   use cam_history_support, only: max_fieldname_len
+
    integer,               intent(in)  :: im
    type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
-   character(len=*),      intent(out) :: flag_name_in_output
+
+   character(len=max_fieldname_len) :: flag_name_in_output
 
    character(len=2) :: imstr ! metric index as a string
 
@@ -626,12 +632,15 @@ function flag_name_in_output( im, cnd_diag_info )
 end function flag_name_in_output
 
 !======================================================
-function fld_1lev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+function fld_1lev_name_in_output( im, ifld, iphys, suff, cnd_diag_info )
+
+   use cam_history_support, only: max_fieldname_len
 
    integer,               intent(in)  :: im, ifld, iphys
    character(len=*),      intent(in)  :: suff
    type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
-   character(len=*),      intent(out) :: fld_1lev_name_in_output
+
+   character(len=max_fieldname_len) :: fld_1lev_name_in_output 
 
    character(len=2) :: imstr ! metric index as a string
 
@@ -643,12 +652,15 @@ function fld_1lev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
 end function fld_1lev_name_in_output
 
 !======================================================
-function fld_nlev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+function fld_nlev_name_in_output( im, ifld, iphys, suff, cnd_diag_info )
+
+   use cam_history_support, only: max_fieldname_len
 
    integer,               intent(in)  :: im, ifld, iphys
    character(len=*),      intent(in)  :: suff
    type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
-   character(len=*),      intent(out) :: fld_nlev_name_in_output
+
+   character(len=max_fieldname_len) :: fld_nlev_name_in_output 
 
    character(len=2) :: imstr ! metric index as a string
 
@@ -660,12 +672,15 @@ function fld_nlev_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
 end function fld_nlev_name_in_output
 
 !======================================================
-function fld_nlevp_name_in_output( im, ,ifld, iphys, suff, cnd_diag_info )
+function fld_nlevp_name_in_output( im, ifld, iphys, suff, cnd_diag_info )
+
+   use cam_history_support, only: max_fieldname_len
 
    integer,               intent(in)  :: im, ifld, iphys
    character(len=*),      intent(in)  :: suff
    type(cnd_diag_info_t), intent(in)  :: cnd_diag_info
-   character(len=*),      intent(out) :: fld_nlevp_name_in_output
+
+   character(len=max_fieldname_len) :: fld_nlevp_name_in_output
 
    character(len=2) :: imstr ! metric index as a string
 

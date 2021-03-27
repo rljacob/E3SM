@@ -1269,10 +1269,20 @@ Different metrics can have different thresholds.
 Default: none
 </entry>
 
-<entry id="physproc_name" type="char*20(100)"  category="history"
+<entry id="ptend_name" type="char*20(100)"  category="history"
        group="conditional_diag_nl" valid_values="" >
 List of physical processes to which conditional sampling 
-will be applied.
+will be applied. The names must match ptend%name of
+the corresponding parameterizations in order for 
+diagnostics to be calculated and written to history files.
+Default: none
+</entry>
+
+<entry id="proc_outname" type="char*20(100)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Short labels for the physical processes to which conditional sampling 
+will be applied. These short labels will be used to form the 
+variable names in the history files.
 Default: none
 </entry>
 

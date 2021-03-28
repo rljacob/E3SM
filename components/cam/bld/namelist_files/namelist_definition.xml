@@ -1269,6 +1269,16 @@ Different metrics can have different thresholds.
 Default: none
 </entry>
 
+<entry id="sample_after" type="char*20(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+List of atmospheric processes after which conditional sampling 
+will be applied. The number of process names specified here 
+should match the number of non-empty elements in metric_name;
+The specified process names must match ptend%name of
+active physics_update calls.
+Default: none
+</entry>
+
 <entry id="ptend_name" type="char*20(100)"  category="history"
        group="conditional_diag_nl" valid_values="" >
 List of physical processes to which conditional sampling 

@@ -207,10 +207,10 @@ subroutine conditional_diag_readnl(nlfile)
       end do
       nmetric = ii
 
-      if (any( metric_nver     (1:nmetric)==0     )) call endrun(subname//' error: need non-zero metric_nver for each metric_name'
-      if (any( metric_cmpr_type(1:nmetric)==0     )) call endrun(subname//' error: need valid metric_cmpr_type for each metric_name'
-      if (any( isnan(metric_threshold(1:nmetric)) )) call endrun(subname//' error: need valid metric_threshold for each metric_name'
-      if (any( sample_after    (1:nmetric)==' '   )) call endrun(subname//' error: be sure to specify sample_after for each metric_name'
+      if (any( metric_nver     (1:nmetric)==0     )) call endrun(subname//' error: need non-zero metric_nver for each metric_name')
+      if (any( metric_cmpr_type(1:nmetric)==0     )) call endrun(subname//' error: need valid metric_cmpr_type for each metric_name')
+      if (any( isnan(metric_threshold(1:nmetric)) )) call endrun(subname//' error: need valid metric_threshold for each metric_name')
+      if (any( sample_after    (1:nmetric)==' '   )) call endrun(subname//' error: be sure to specify sample_after for each metric_name')
 
       ! atmospheric processes to monitor
 
@@ -382,7 +382,7 @@ subroutine conditional_diag_readnl(nlfile)
                                                         cnd_diag_info%metric_nver(ii),      &
                                                         cnd_diag_info%metric_cmpr_type(ii), &
                                                         cnd_diag_info%metric_threshold(ii), &
-                                                adjustr(cnd_diag_info%sample_aftre(ii))
+                                                adjustr(cnd_diag_info%sample_after(ii))
       end do
 
       write(iulog,*)
@@ -420,7 +420,6 @@ subroutine conditional_diag_readnl(nlfile)
       write(iulog,*)'==========================================================='
       write(iulog,*)
 
-   end if ! cnd_diag_info%nmetric == 0
   end if  ! masterproc
 
 end subroutine conditional_diag_readnl

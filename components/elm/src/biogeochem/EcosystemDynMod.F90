@@ -14,26 +14,16 @@ module EcosystemDynMod
   use elm_varctl          , only : use_century_decomp
   use elm_varctl          , only : use_erosion
   use CNStateType         , only : cnstate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use CanopyStateType     , only : canopystate_type
   use SoilStateType       , only : soilstate_type
-  use TemperatureType     , only : temperature_type
-  use WaterstateType      , only : waterstate_type
-  use WaterfluxType       , only : waterflux_type
   use atm2lndType         , only : atm2lnd_type
   use SoilStateType       , only : soilstate_type
   use CanopyStateType     , only : canopystate_type
-  use TemperatureType     , only : temperature_type
   use PhotosynthesisType  , only : photosyns_type
   use CH4Mod              , only : ch4_type
   use EnergyFluxType      , only : energyflux_type
   use SoilHydrologyType   , only : soilhydrology_type
   use FrictionVelocityType, only : frictionvel_type
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use SedFluxType         , only : sedflux_type
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
@@ -44,12 +34,12 @@ module EcosystemDynMod
   use VegetationDataType  , only : veg_ns, veg_nf
   use VegetationDataType  , only : veg_ps, veg_pf
   use ELMFatesInterfaceMod  , only : hlm_fates_interface_type
-
+  use elm_instMod  , only : alm_fates
   ! bgc interface & pflotran
-  use elm_varctl          , only : use_elm_interface, use_elm_bgc, use_pflotran, pf_cmode, pf_hmode
-  use VerticalProfileMod   , only : decomp_vertprofiles
-  use AllocationMod     , only : nu_com_nfix, nu_com_phosphatase
-  use elm_varctl          , only : nu_com, use_pheno_flux_limiter
+  use elm_varctl         , only : use_elm_interface, use_elm_bgc, use_pflotran, pf_cmode, pf_hmode
+  use VerticalProfileMod , only : decomp_vertprofiles
+  use AllocationMod      , only : nu_com_nfix, nu_com_phosphatase
+  use elm_varctl         , only : nu_com, use_pheno_flux_limiter
   use PhenologyFLuxLimitMod , only : phenology_flux_limiter, InitPhenoFluxLimiter
 
   use timeinfoMod
@@ -284,18 +274,18 @@ contains
     !
     ! !USES:
     use NitrogenDynamicsMod         , only: NitrogenDeposition,NitrogenFixation, NitrogenFert, CNSoyfix
-    use PhosphorusDynamicsMod           , only: PhosphorusDeposition
-    use MaintenanceRespMod             , only: MaintenanceResp
-    use DecompCascadeBGCMod  , only: decomp_rate_constants_bgc
-    use DecompCascadeCNMod   , only: decomp_rate_constants_cn
-    use CropType               , only: crop_type
-    use elm_varpar             , only: crop_prog
-    use AllocationMod        , only: Allocation1_PlantNPDemand ! Phase-1 of CNAllocation
-    use NitrogenDynamicsMod         , only: NitrogenLeaching
-    use PhosphorusDynamicsMod           , only: PhosphorusLeaching
+    use PhosphorusDynamicsMod       , only: PhosphorusDeposition
+    use MaintenanceRespMod          , only: MaintenanceResp
+    use DecompCascadeBGCMod   , only: decomp_rate_constants_bgc
+    use DecompCascadeCNMod    , only: decomp_rate_constants_cn
+    use CropType              , only: crop_type
+    use elm_varpar            , only: crop_prog
+    use AllocationMod         , only: Allocation1_PlantNPDemand ! Phase-1 of CNAllocation
+    use NitrogenDynamicsMod   , only: NitrogenLeaching
+    use PhosphorusDynamicsMod       , only: PhosphorusLeaching
     use NitrogenDynamicsMod         , only: NitrogenFixation_balance
-    use PhosphorusDynamicsMod           , only: PhosphorusWeathering,PhosphorusAdsportion,PhosphorusDesoprtion,PhosphorusOcclusion
-    use PhosphorusDynamicsMod           , only: PhosphorusBiochemMin,PhosphorusBiochemMin_balance
+    use PhosphorusDynamicsMod       , only: PhosphorusWeathering,PhosphorusAdsportion,PhosphorusDesoprtion,PhosphorusOcclusion
+    use PhosphorusDynamicsMod       , only: PhosphorusBiochemMin,PhosphorusBiochemMin_balance
 
     !
     ! !ARGUMENTS:
@@ -486,11 +476,11 @@ contains
     use CarbonIsoFluxMod          , only: CarbonIsoFlux1, CarbonIsoFlux2, CarbonIsoFlux2h, CarbonIsoFlux3
     use C14DecayMod          , only: C14Decay, C14BombSpike
     use WoodProductsMod      , only: WoodProducts
-    use CropHarvestPoolsMod    , only: CropHarvestPools
+    use CropHarvestPoolsMod  , only: CropHarvestPools
     use SoilLittVertTranspMod, only: SoilLittVertTransp
     use CropType               , only: crop_type
     use dynHarvestMod          , only: CNHarvest
-    use RootDynamicsMod           , only: RootDynamics
+    use RootDynamicsMod        , only: RootDynamics
     use SoilLittDecompMod            , only: SoilLittDecompAlloc
     use SoilLittDecompMod            , only: SoilLittDecompAlloc2 !after SoilLittDecompAlloc
 
@@ -574,8 +564,7 @@ contains
         !--------------------------------------------
 
         call t_startf('GrowthResp')
-        call GrowthResp(num_soilp, filter_soilp, &
-              carbonflux_vars)
+        call GrowthResp(num_soilp, filter_soilp )
         call t_stopf('GrowthResp')
 
         call veg_cf%SummaryRR(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, col_cf)
@@ -595,7 +584,7 @@ contains
             call t_startf('RootDynamics')
 
             call RootDynamics(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-                  canopystate_vars, carbonstate_vars, nitrogenstate_vars, carbonflux_vars,  &
+                  canopystate_vars,   &
                   cnstate_vars, crop_vars, energyflux_vars, soilstate_vars)
             call t_stopf('RootDynamics')
         end if
@@ -657,7 +646,7 @@ contains
        call col_cf%ZeroForFatesRR(bounds,num_soilc, filter_soilc)
 
        ! Transfer fates litter fluxes into ELM source arrays
-       call elm_fates%UpdateLitterFluxes(bounds)
+       call alm_fates%UpdateLitterFluxes(bounds)
     end if
 
    call CarbonStateUpdate1(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &

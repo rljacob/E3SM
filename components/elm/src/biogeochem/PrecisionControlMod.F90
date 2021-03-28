@@ -744,6 +744,8 @@ contains
             end do
          endif
 
+       endif  !if ECA
+
       endif ! if (.not. is_active_betr_bgc)
 
 

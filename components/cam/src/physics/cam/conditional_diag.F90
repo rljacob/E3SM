@@ -64,6 +64,10 @@ module conditional_diag
     integer,allocatable          :: metric_nver(:)       ! shape = (nmetric); # of vertical levels
     real(r8),allocatable         :: metric_threshold(:)  ! shape = (nmetric); threshold value for conditionalsampling 
     integer,allocatable          :: metric_cmpr_type(:)  ! shape = (nmetric); see module parameters
+    character(len=ptndname_maxlen),&
+                     allocatable :: sample_after(:)      ! shape = (nmetric); after which atmospheric process
+                                                         ! will conditional sampling be applied? The process names
+                                                         ! need to match ptend%name)
 
     ! Physical processes to be monitored
     integer                          :: nphysproc = 0    ! total # of processes
@@ -118,7 +122,7 @@ contains
 !===============================================================================
 subroutine conditional_diag_readnl(nlfile)
 
-   use infnan,          only: nan, assignment(=)
+   use infnan,          only: nan, assignment(=), isnan
    use namelist_utils,  only: find_group_name
    use units,           only: getunit, freeunit
    use mpishorthand
@@ -135,6 +139,7 @@ subroutine conditional_diag_readnl(nlfile)
    integer                       :: metric_nver     (nmetric_max)
    integer                       :: metric_cmpr_type(nmetric_max)
    real(r8)                      :: metric_threshold(nmetric_max)
+   character(len=ptndname_maxlen):: sample_after    (nmetric_max)
 
    character(len=ptndname_maxlen) :: ptend_name(nphysproc_max)
    character(len=poutname_maxlen) :: proc_outname(nphysproc_max)
@@ -154,7 +159,7 @@ subroutine conditional_diag_readnl(nlfile)
 
    !-------
    namelist /conditional_diag_nl/  &
-            metric_name, metric_nver, metric_cmpr_type, metric_threshold, &
+            metric_name, metric_nver, metric_cmpr_type, metric_threshold, sample_after, &
             ptend_name, proc_outname, fld_name_1lev, fld_name_nlev, fld_name_nlevp,  &
             l_output_state, l_output_tend
 
@@ -165,6 +170,7 @@ subroutine conditional_diag_readnl(nlfile)
    metric_nver      = 0
    metric_cmpr_type = 0
    metric_threshold = nan
+   sample_after     = ' '
 
    ptend_name     = ' '
    proc_outname   = ' '
@@ -189,15 +195,66 @@ subroutine conditional_diag_readnl(nlfile)
          end if
       end if
       close(unitn)
+
+      !--------------------------------------
+      ! check validity of namelist variables
+      !--------------------------------------
+      ! metrics to use
+
+      ii = 0
+      do while ( (ii+1) <= nmetric_max .and. metric_name(ii+1) /= ' ')
+         ii = ii + 1
+      end do
+      nmetric = ii
+
+      if (any( metric_nver     (1:nmetric)==0     )) call endrun(subname//' error: need non-zero metric_nver for each metric_name'
+      if (any( metric_cmpr_type(1:nmetric)==0     )) call endrun(subname//' error: need valid metric_cmpr_type for each metric_name'
+      if (any( isnan(metric_threshold(1:nmetric)) )) call endrun(subname//' error: need valid metric_threshold for each metric_name'
+      if (any( sample_after    (1:nmetric)==' '   )) call endrun(subname//' error: be sure to specify sample_after for each metric_name'
+
+      ! atmospheric processes to monitor
+
+      ii = 0
+      do while ( (ii+1) <= nphysproc_max .and. ptend_name(ii+1) /= ' ')
+         ii = ii + 1
+      end do
+      nphysproc = ii
+
+      if (any(proc_outname(1:nphysproc)==' ')) call endrun(subname//'error: be sure to specify proc_outname for each ptend_name.')
+
    end if ! masterproc
 
 #ifdef SPMD
-   ! Broadcast namelist variables
+   call mpibcast(nmetric,  1, mpiint, 0, mpicom)
+   call mpibcast(nphysproc,1, mpiint, 0, mpicom)
+#endif
 
+   if ( (nmetric>0) .and. (nphysproc==0) ) then
+      nmetric = 0
+      write(iulog,*) subname//' WARNING: reset nmetric to 0 (no user-specified ptend_name)'
+   end if
+
+   if (nmetric==0) then
+
+      if (masterproc) then
+         write(iulog,*)'==========================================================='
+         write(iulog,*)'       *** Conditional diagnostics NOT requested ***'
+         write(iulog,*)'==========================================================='
+      end if
+
+      return
+
+   end if
+
+#ifdef SPMD
+   !--------------------------------------
+   ! Broadcast namelist variables
+   !--------------------------------------
    call mpibcast(metric_name,      nmetric_max*len(metric_name(1)), mpichar, 0, mpicom)
    call mpibcast(metric_nver,      nmetric_max,                     mpiint,  0, mpicom)
    call mpibcast(metric_cmpr_type, nmetric_max,                     mpiint,  0, mpicom)
    call mpibcast(metric_threshold, nmetric_max,                     mpir8,   0, mpicom)
+   call mpibcast(sample_after,     nmetric_max*len(sample_after(1)),mpichar, 0, mpicom)
 
    call mpibcast(ptend_name,    nphysproc_max*len(ptend_name(1)),   mpichar, 0, mpicom)
    call mpibcast(proc_outname,  nphysproc_max*len(proc_outname(1)), mpichar, 0, mpicom)
@@ -215,17 +272,10 @@ subroutine conditional_diag_readnl(nlfile)
    !-------------------------------------------
    ! metrics for conditional sampling
 
-   ii = 0
-   do while ( (ii+1) <= nmetric_max .and. metric_name(ii+1) /= ' ')
-      ii = ii + 1
-   end do
-   nmetric = ii
-
    cnd_diag_info%nmetric = nmetric
 
    allocate( cnd_diag_info%metric_name(nmetric), stat=ierr)
    if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_name')
-
    do ii = 1,nmetric
       cnd_diag_info%metric_name(ii) = trim(adjustl(metric_name(ii)))
    end do
@@ -242,17 +292,11 @@ subroutine conditional_diag_readnl(nlfile)
    if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%metric_threshold')
    cnd_diag_info%metric_threshold(1:nmetric) = metric_threshold(1:nmetric)
 
-   ! physical processes to monitor 
+   allocate( cnd_diag_info%sample_after(nmetric), stat=ierr)
+   if ( ierr /= 0 ) call endrun(subname//': allocation error for cnd_diag_info%sample_after')
+   cnd_diag_info%sample_after(1:nmetric) = sample_after(1:nmetric)
 
-   ii = 0
-   do while ( (ii+1) <= nphysproc_max .and. ptend_name(ii+1) /= ' ')
-      if (proc_outname(ii+1)==' ') then
-         call endrun(subname//': be sure to specify proc_outname for each ptend_name')
-      else
-         ii = ii + 1
-      end if
-   end do
-   nphysproc = ii
+   ! atmospheric processes to monitor 
 
    cnd_diag_info%nphysproc = nphysproc
 
@@ -326,25 +370,19 @@ subroutine conditional_diag_readnl(nlfile)
    !-----------------------------------------------
    if (masterproc) then
 
-    if (cnd_diag_info%nmetric == 0) then
-
-      write(iulog,*)'==========================================================='
-      write(iulog,*)'       *** Conditional diagnostics NOT requested ***'
-      write(iulog,*)'==========================================================='
-
-    else
-
       write(iulog,*)'==========================================================='
       write(iulog,*)'       *** Conditional diagnostics requested ***'
       write(iulog,*)'-----------------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,2x,a10,a6,a12,a20)')'metric','nlev','cmpr type','threshold'
+      write(iulog,'(4x,2x,a10,a6,a12,a20,a20)')'metric','nlev','cmpr type','threshold','sample after'
       do ii = 1,cnd_diag_info%nmetric
-         write(iulog,'(i4.3,2x,a10,i6,i12,e20.10)') ii, cnd_diag_info%metric_name(ii), &
-                                                        cnd_diag_info%metric_nver(ii), &
+         write(iulog,'(i4.3,2x,a10,i6,i12,e20.10,a20)') ii,                                 &
+                                                adjustr(cnd_diag_info%metric_name(ii)),     &
+                                                        cnd_diag_info%metric_nver(ii),      &
                                                         cnd_diag_info%metric_cmpr_type(ii), &
-                                                        cnd_diag_info%metric_threshold(ii)
+                                                        cnd_diag_info%metric_threshold(ii), &
+                                                adjustr(cnd_diag_info%sample_aftre(ii))
       end do
 
       write(iulog,*)

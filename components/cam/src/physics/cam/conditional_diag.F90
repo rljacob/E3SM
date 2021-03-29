@@ -53,7 +53,7 @@ module conditional_diag
     logical :: l_output_state = .false.
 
     ! Do we want to write out increments caused by different physicall processes? 
-    logical :: l_output_incr  = .false.
+    logical :: l_output_incrm = .false.
 
     ! Metrics used for conditional sampling.
     ! The current implementation allows the user to define multiple metrics,
@@ -146,7 +146,7 @@ subroutine conditional_diag_readnl(nlfile)
    character(len=fname_maxlen)    :: fld_name (nfld_max)
    integer                        :: fld_nver (nfld_max)
 
-   logical :: l_output_state, l_output_incr
+   logical :: l_output_state, l_output_incrm
 
    ! other misc local variables
    integer :: nmetric
@@ -160,7 +160,7 @@ subroutine conditional_diag_readnl(nlfile)
             metric_name, metric_nver, metric_cmpr_type, metric_threshold, metric_fillvalue, sample_after, &
             ptend_name, proc_outname, &
             fld_name, fld_nver,  &
-            l_output_state, l_output_incr
+            l_output_state, l_output_incrm
 
    !----------------------------------------
    !  Default values
@@ -179,7 +179,7 @@ subroutine conditional_diag_readnl(nlfile)
    fld_nver       = 0 
 
    l_output_state = .false.
-   l_output_incr  = .false.
+   l_output_incrm = .false.
 
    !----------------------------------------
    ! Read namelist and check validity
@@ -194,6 +194,7 @@ subroutine conditional_diag_readnl(nlfile)
       if (ierr == 0) then
          read(unitn, conditional_diag_nl, iostat=ierr)
          if (ierr /= 0) then
+            write(iulog,*) 'read error ',ierr
             call endrun(subname // ':: ERROR reading namelist')
          end if
       end if
@@ -272,7 +273,7 @@ subroutine conditional_diag_readnl(nlfile)
    call mpibcast(fld_nver,  nfld_max,                   mpiint,  0, mpicom)
 
    call mpibcast(l_output_state, 1, mpilog, 0, mpicom)
-   call mpibcast(l_output_incr,  1, mpilog, 0, mpicom)
+   call mpibcast(l_output_incrm, 1, mpilog, 0, mpicom)
 #endif
 
    !-------------------------------------------
@@ -341,7 +342,7 @@ subroutine conditional_diag_readnl(nlfile)
    ! output to history file(s)
 
    cnd_diag_info%l_output_state = l_output_state
-   cnd_diag_info%l_output_incr  = l_output_incr 
+   cnd_diag_info%l_output_incrm = l_output_incrm
 
    !-----------------------------------------------
    ! Send information to log file
@@ -373,14 +374,14 @@ subroutine conditional_diag_readnl(nlfile)
 
       write(iulog,*)
       write(iulog,'(4x,a30,a6)')'physical fields','nlev'
-      do ii = 1,cnd_diag_info%nfld_1lev
+      do ii = 1,cnd_diag_info%nfld
          write(iulog,'(i4.3,a30,i6)') ii, adjustr(cnd_diag_info%fld_name(ii)), cnd_diag_info%fld_nver(ii)
       end do
       write(iulog,*)'--------------------------------------------------'
 
       write(iulog,*)
       write(iulog,*)' l_output_state = ',l_output_state
-      write(iulog,*)' l_output_incr  = ',l_output_incr
+      write(iulog,*)' l_output_incrm = ',l_output_incrm
       write(iulog,*)
       write(iulog,*)'==========================================================='
       write(iulog,*)
@@ -432,9 +433,9 @@ subroutine conditional_diag_alloc( psetcols, metric_nver, nphysproc, nfld, fld_n
         allocate( diag%fld(ifld)% inc(psetcols,fld_nver(ifld),nphysproc), stat=ierr)
         if ( ierr /= 0 ) call endrun(subname//': allocation of diag%fld%inc')
 
-        diag%fld_1lev(ifld)% old(:,:)   = inf
-        diag%fld_1lev(ifld)% val(:,:,:) = inf
-        diag%fld_1lev(ifld)% inc(:,:,:) = inf
+        diag%fld(ifld)% old(:,:)   = inf
+        diag%fld(ifld)% val(:,:,:) = inf
+        diag%fld(ifld)% inc(:,:,:) = inf
 
      end do !ifld
 
@@ -499,7 +500,7 @@ subroutine conditional_diag_output_init(pver)
      ! register the diagnostics for output
      !----------------------------------------
      val_inc_suff = (/"_val","_inc"/)
-     l_output     = (/cnd_diag_info%l_output_state, cnd_diag_info%l_output_incr/)
+     l_output     = (/cnd_diag_info%l_output_state, cnd_diag_info%l_output_incrm/)
 
      do ii = 1,2 ! field value (state) or increment
 
@@ -605,7 +606,7 @@ function fld_long_name_in_output( im, ifld, iphys, suff, cnd_diag_info )
    write(imstr,'(i2.2)') im
 
    fld_long_name_in_output = trim(cnd_diag_info%fld_name(ifld))//suff// &
-                             ' sampled under condition '//imstr &
+                             ' sampled under condition '//imstr// &
                              ' ('//trim(cnd_diag_info%metric_name(im))//')' 
 
 end function fld_long_name_in_output

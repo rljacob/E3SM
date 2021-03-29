@@ -1269,6 +1269,13 @@ Different metrics can have different thresholds.
 Default: none
 </entry>
 
+<entry id="metric_fillvalue" type="real(10)"  category="history"
+       group="conditional_diag_nl" valid_values="" >
+Value to be used for masking out unwanted grid cells in conditional sampling.
+Different metrics can have different fill values.
+Default: none
+</entry>
+
 <entry id="sample_after" type="char*20(10)"  category="history"
        group="conditional_diag_nl" valid_values="" >
 List of atmospheric processes after which conditional sampling 
@@ -1296,24 +1303,15 @@ variable names in the history files.
 Default: none
 </entry>
 
-<entry id="fld_name_1lev" type="char*8(10)"  category="history"
+<entry id="fld_name" type="char*8(20)"  category="history"
        group="conditional_diag_nl" valid_values="" >
-List of fields with one vertical level to which conditional sampling 
-will be applied.
+List of fields to which conditional sampling will be applied.
 Default: none
 </entry>
 
-<entry id="fld_name_nlev" type="char*8(10)"  category="history"
+<entry id="fld_nver" type="integer(20)"  category="history"
        group="conditional_diag_nl" valid_values="" >
-List of fields with nlev vertical levels to which conditional sampling 
-will be applied.
-Default: none
-</entry>
-
-<entry id="fld_name_nlevp" type="char*8(10)"  category="history"
-       group="conditional_diag_nl" valid_values="" >
-List of fields with nlev+1 vertical levels to which conditional sampling 
-will be applied.
+Number of vertical levels
 Default: none
 </entry>
 
@@ -1324,9 +1322,9 @@ to history file(s).
 Default: none
 </entry>
 
-<entry id="l_output_tend" type="logical"  category="history"
+<entry id="l_output_incrm" type="logical"  category="history"
        group="conditional_diag_nl" valid_values="" >
-Whether the tendencies of the above-specified fields will be written 
+Whether the increments of the above-specified fields will be written 
 to history file(s).
 Default: none
 </entry>

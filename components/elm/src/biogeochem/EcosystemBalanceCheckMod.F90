@@ -892,7 +892,7 @@ contains
       end do
 
       if (err_found) then
-  #ifndef _OPENACC
+#ifndef _OPENACC
          g = err_index
          write(iulog,*)'Grid cbalance error   = ',errcb_grc(g), g
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(g),grc_pp%londeg(g)

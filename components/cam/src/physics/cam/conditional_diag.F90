@@ -476,18 +476,18 @@ subroutine conditional_diag_output_init(pver)
 
      if (cnd_diag_info%metric_nver(im)==1) then
 
-       call addfld(trim(output_fld_name ), horiz_only, 'A',' ',' ') 
-       call addfld(trim(output_fld_name2), horiz_only, 'A',' ',' ') 
+       call addfld(trim(output_fld_name ), horiz_only, 'A',' ','Metric used in conditional sampling')
+       call addfld(trim(output_fld_name2), horiz_only, 'A',' ','Flags  used in conditional sampling')
 
      elseif(cnd_diag_info%metric_nver(im)==pver) then
 
-       call addfld(trim(output_fld_name ), (/'lev'/),  'A',' ',' ') 
-       call addfld(trim(output_fld_name2), horiz_only, 'A',' ',' ') 
+       call addfld(trim(output_fld_name ), (/'lev'/),  'A',' ','Metric used in conditional sampling')
+       call addfld(trim(output_fld_name2), (/'lev'/),  'A',' ','Flags  used in conditional sampling')
 
      elseif(cnd_diag_info%metric_nver(im)==pver+1) then
 
-       call addfld(trim(output_fld_name ), (/'ilev'/), 'A',' ',' ') 
-       call addfld(trim(output_fld_name2), (/'ilev'/), 'A',' ',' ') 
+       call addfld(trim(output_fld_name ), (/'ilev'/), 'A',' ','Metric used in conditional sampling')
+       call addfld(trim(output_fld_name2), (/'ilev'/), 'A',' ','Flags  used in conditional sampling')
 
      else 
        call endrun(subname//': invalid number of vertical levels for metric '//trim(cnd_diag_info%metric_name(im)))
@@ -606,6 +606,7 @@ function fld_long_name_in_output( im, ifld, iphys, suff, cnd_diag_info )
    write(imstr,'(i2.2)') im
 
    fld_long_name_in_output = trim(cnd_diag_info%fld_name(ifld))//suff// &
+                             ' after '//trim(cnd_diag_info%ptend_name(iphys))// &
                              ' sampled under condition '//imstr// &
                              ' ('//trim(cnd_diag_info%metric_name(im))//')' 
 

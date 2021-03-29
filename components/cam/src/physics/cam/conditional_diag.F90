@@ -41,10 +41,13 @@ module conditional_diag
   integer, parameter :: ptndname_maxlen = 20
   integer, parameter :: poutname_maxlen = 3
 
-  integer, parameter :: GT  = 1
-  integer, parameter :: GEQ = 2
+  integer, parameter :: GT  =  1
+  integer, parameter :: GE  =  2
   integer, parameter :: LT  = -1
-  integer, parameter :: LEQ = -2
+  integer, parameter :: LE  = -2
+
+  real(r8),parameter :: ON  = 1._r8
+  real(r8),parameter :: OFF = 0._r8
 
   !-------------------------------------------------------------------------------
   type cnd_diag_info_t

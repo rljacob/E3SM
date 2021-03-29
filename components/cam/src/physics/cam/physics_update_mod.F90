@@ -89,7 +89,7 @@ contains
     !and also output variables for pergro test
 
     use time_manager,  only: is_first_step
-
+    use conditional_diag_main, only: conditional_diag_cal_and_output
     
     !Arguments
     type(physics_ptend), intent(inout)  :: ptend   ! Parameterization tendencies
@@ -121,7 +121,12 @@ contains
     
     !call the old physics update call
     call physics_update_main (state, ptend, dt, tend)
-    
+
+    ! Conditional sampling
+
+    call conditional_diag_cal_and_output( state, pname )
+
+    ! Balwinder and Phil's pergro diagnostics    
     if (pergro_test_active .and. outfld_active) then
        
        !write text file to be used for the post processing

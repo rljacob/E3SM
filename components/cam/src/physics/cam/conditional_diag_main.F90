@@ -6,30 +6,54 @@ module conditional_diag_main
   use physics_types,    only: physics_state
   use camsrfexch,       only: cam_in_t
 
-  use conditional_diag, only: cnd_diag_info
+  use conditional_diag, only: cnd_diag_info, cnd_diag_info_t
+
+  implicit none
+
+  private
+
+  public conditional_diag_cal_and_output
+
+  integer, parameter :: GT  =  1
+  integer, parameter :: GE  =  2
+  integer, parameter :: LT  = -1
+  integer, parameter :: LE  = -2
+
+  real(r8),parameter :: ON  = 1._r8
+  real(r8),parameter :: OFF = 0._r8
+
+contains
 
 !======================================================
 subroutine conditional_diag_cal_and_output( state, pname, cam_in )
 
-  use ppgrid, pcols
+  use ppgrid,              only: pcols
+  use cam_history_support, only: max_fieldname_len
+  use cam_history,         only: outfld
 
-  type(physics_state), intent(inout) :: state
+  use conditional_diag_hist_util, only: metric_name_in_output, &
+                                        flag_name_in_output, &
+                                        fld_name_in_output
+
+  type(physics_state), intent(inout), target :: state
   character(len=*),    intent(in)    :: pname
 
   type(cam_in_t),      intent(in),optional :: cam_in
 
   integer :: nmetric, nphysproc, nfld
-  integer :: im, iphys, ii
+  integer :: im, iphys, ii, ifld
   integer :: ncol, lchnk
 
-  real(r8),pointer :: metric(:,:), flag(:,:), new(:,:), inc(:,:)
+  real(r8),pointer :: metric(:,:), flag(:,:), new(:,:), inc(:,:), old(:,:)
+  real(r8),pointer :: fld(:,:)
 
+  character(len=max_fieldname_len) :: outfldname
 
   if (cnd_diag_info%nmetric == 0) return  ! no conditional diagnostics requested 
 
-  nmetric  = cnd_diag_info%nmetric
-  nphysprc = cnd_diag_info%nphysproc
-  nfld     = cnd_diag_info%nfld
+  nmetric   = cnd_diag_info%nmetric
+  nphysproc = cnd_diag_info%nphysproc
+  nfld      = cnd_diag_info%nfld
 
   lchnk    = state%lchnk
   ncol     = state%ncol
@@ -83,8 +107,8 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
            ! Save increments for other metrics; update "old" value
 
            do im = 2,nmetric
-              state%cnd_diag(im)%fld_1lev(ifld)% inc(:,:,iphys) = inc(:,:)
-              state%cnd_diag(im)%fld_1lev(ifld)% old(:,:)       = new(:,:)
+              state%cnd_diag(im)%fld(ifld)% inc(:,:,iphys) = inc(:,:)
+              state%cnd_diag(im)%fld(ifld)% old(:,:)       = new(:,:)
            end do
           
         end if ! l_output_incrm
@@ -111,7 +135,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
         ! Get flag values and send to history
 
         flag => state%cnd_diag(im)%flag
-        call get_flags( metric, im, cnd_diag_info, flag )
+        call get_flags( metric, im, ncol, cnd_diag_info, flag )
 
         outfldname = flag_name_in_output( im, cnd_diag_info )
         call outfld( trim(outfldname), flag, pcols, lchnk )
@@ -122,7 +146,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
 
         if (cnd_diag_info%l_output_state) then        
         do ifld = 1,nfld
-        do ii   = 1,nphysprc
+        do ii   = 1,nphysproc
 
            fld => state%cnd_diag(im)%fld(ifld)% val(:,:,ii)
            where(flag.eq.OFF)  fld = cnd_diag_info%metric_fillvalue(im)
@@ -135,7 +159,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
 
         if (cnd_diag_info%l_output_incrm) then        
         do ifld = 1,nfld
-        do ii   = 1,nphysprc
+        do ii   = 1,nphysproc
 
            fld => state%cnd_diag(im)%fld(ifld)% inc(:,:,ii)
            where(flag.eq.OFF)  fld = cnd_diag_info%metric_fillvalue(im)
@@ -192,14 +216,11 @@ subroutine get_values( varname, state, arrayout )
 
   case default 
      call endrun(subname//': unknow varname - '//trim(varname))
-  end if
+  end select
 
 end subroutine get_values
 
-!=======================================================================
 subroutine get_flags( metric, im, ncol, cnd_diag_info, flag )
-
-  use conditional_diag, only: GT, GE, LT, LE, ON, OFF
 
   real(r8),              intent(in) :: metric(:,:)
   integer,               intent(in) :: im
@@ -210,21 +231,21 @@ subroutine get_flags( metric, im, ncol, cnd_diag_info, flag )
 
   character(len=*),parameter :: subname = 'get_flags'
 
-  flag(:,:) = OFF 
+  flag(:,:) = OFF
 
   select case (cnd_diag_info%metric_cmpr_type(im))
   case (GT)
 
     where (metric(1:ncol,:).gt.cnd_diag_info%metric_threshold(im))
-      flag(1:ncol,:) = ON 
+      flag(1:ncol,:) = ON
     elsewhere
-      flag(1:ncol,:) = OFF 
+      flag(1:ncol,:) = OFF
     end where
 
   case (GE)
 
     where (metric(1:ncol,:).ge.cnd_diag_info%metric_threshold(im))
-      flag(1:ncol,:) = ON 
+      flag(1:ncol,:) = ON
     elsewhere
       flag(1:ncol,:) = OFF
     end where
@@ -232,15 +253,15 @@ subroutine get_flags( metric, im, ncol, cnd_diag_info, flag )
   case (LT)
 
     where (metric(1:ncol,:).lt.cnd_diag_info%metric_threshold(im))
-      flag(1:ncol,:) = ON 
+      flag(1:ncol,:) = ON
     elsewhere
-      flag(1:ncol,:) = OFF 
+      flag(1:ncol,:) = OFF
     end where
 
   case (LE)
 
     where (metric(1:ncol,:).le.cnd_diag_info%metric_threshold(im))
-      flag(1:ncol,:) = ON 
+      flag(1:ncol,:) = ON
     elsewhere
       flag(1:ncol,:) = OFF
     end where

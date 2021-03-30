@@ -719,7 +719,8 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out, cnd_diag_info )
     use rad_solar_var,      only: rad_solar_var_init
     use nudging,            only: Nudge_Model,nudging_init
     use output_aerocom_aie, only: output_aerocom_aie_init, do_aerocom_ind3
-    use conditional_diag,   only: cnd_diag_info_t, conditional_diag_output_init
+    use conditional_diag,   only: cnd_diag_info_t
+    use conditional_diag_hist_util, only:  conditional_diag_output_init
 
 
     ! Input/output arguments

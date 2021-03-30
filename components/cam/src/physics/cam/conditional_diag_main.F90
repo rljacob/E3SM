@@ -92,7 +92,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
         call get_values( trim(cnd_diag_info%fld_name(ifld)), state, new ) !in, in, out
 
         do im = 2,nmetric
-           state%cnd_diag(im)%fld(ifld)% val(:,:,iphys) = new(:,:)
+           state%cnd_diag(im)%fld(ifld)% val(1:ncol,:,iphys) = new(1:ncol,:)
         end do
 
         ! Calculate increments
@@ -100,15 +100,17 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
         if (cnd_diag_info%l_output_incrm) then
 
            im = 1
-           old => state%cnd_diag(im)%fld(ifld)% old
            inc => state%cnd_diag(im)%fld(ifld)% inc(:,:,iphys)
-           inc = new - old
+           old => state%cnd_diag(im)%fld(ifld)% old
+
+           inc(1:ncol,:) = new(1:ncol,:) - old(1:ncol,:)
+           old(1:ncol,:) = new(1:ncol,:)
 
            ! Save increments for other metrics; update "old" value
 
            do im = 2,nmetric
-              state%cnd_diag(im)%fld(ifld)% inc(:,:,iphys) = inc(:,:)
-              state%cnd_diag(im)%fld(ifld)% old(:,:)       = new(:,:)
+              state%cnd_diag(im)%fld(ifld)% inc(1:ncol,:,iphys) = inc(1:ncol,:)
+              state%cnd_diag(im)%fld(ifld)% old(1:ncol,:)       = new(1:ncol,:)
            end do
           
         end if ! l_output_incrm
@@ -191,22 +193,22 @@ subroutine get_values( varname, state, arrayout )
 
   select case (trim(adjustl(varname)))
   case('T')
-     arrayout(:,:) = state%t(:,:)
+     arrayout(1:ncol,:) = state%t(1:ncol,:)
 
   case('U')
-     arrayout(:,:) = state%u(:,:)
+     arrayout(1:ncol,:) = state%u(1:ncol,:)
 
   case('V')
-     arrayout(:,:) = state%v(:,:)
+     arrayout(1:ncol,:) = state%v(1:ncol,:)
 
   case('PMID')
-     arrayout(:,:) = state%pmid(:,:)
+     arrayout(1:ncol,:) = state%pmid(1:ncol,:)
 
   case('PINT')
-     arrayout(:,:) = state%pmid(:,:)
+     arrayout(1:ncol,:) = state%pmid(1:ncol,:)
 
   case('PS')
-     arrayout(:,1) = state%ps(:)
+     arrayout(1:ncol,1) = state%ps(1:ncol)
 
  !elseif (varname.eq.'QSATW') then
  !   call qsatw()

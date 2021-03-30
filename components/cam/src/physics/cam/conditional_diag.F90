@@ -427,7 +427,7 @@ subroutine conditional_diag_alloc( psetcols, metric_nver, nphysproc, nfld, fld_n
         allocate( diag%fld(ifld)% inc(psetcols,fld_nver(ifld),nphysproc), stat=ierr)
         if ( ierr /= 0 ) call endrun(subname//': allocation of diag%fld%inc')
 
-        diag%fld(ifld)% old(:,:)   = inf
+        diag%fld(ifld)% old(:,:)   = 0._r8
         diag%fld(ifld)% val(:,:,:) = inf
         diag%fld(ifld)% inc(:,:,:) = inf
 

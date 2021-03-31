@@ -60,7 +60,6 @@ module conditional_diag
     character(len=mname_maxlen),&
                      allocatable :: metric_name(:)       ! shape = (nmetric); name of the metric
     integer,allocatable          :: metric_nver(:)       ! shape = (nmetric); # of vertical levels
-    real(r8),allocatable         :: metric_fillvalue(:)  ! shape = (nmetric); fill value used in conditional sampling 
     real(r8),allocatable         :: metric_threshold(:)  ! shape = (nmetric); threshold value for conditional sampling 
     integer,allocatable          :: metric_cmpr_type(:)  ! shape = (nmetric); see module parameters
     character(len=ptndname_maxlen),&
@@ -131,7 +130,6 @@ subroutine conditional_diag_readnl(nlfile)
    integer                       :: metric_nver     (nmetric_max)
    integer                       :: metric_cmpr_type(nmetric_max)
    real(r8)                      :: metric_threshold(nmetric_max)
-   real(r8)                      :: metric_fillvalue(nmetric_max)
    character(len=ptndname_maxlen):: sample_after    (nmetric_max)
 
    character(len=ptndname_maxlen) :: ptend_name(nphysproc_max)
@@ -151,7 +149,7 @@ subroutine conditional_diag_readnl(nlfile)
 
    !-------
    namelist /conditional_diag_nl/  &
-            metric_name, metric_nver, metric_cmpr_type, metric_threshold, metric_fillvalue, sample_after, &
+            metric_name, metric_nver, metric_cmpr_type, metric_threshold, sample_after, &
             ptend_name, proc_outname, &
             fld_name, fld_nver,  &
             l_output_state, l_output_incrm
@@ -163,7 +161,6 @@ subroutine conditional_diag_readnl(nlfile)
    metric_nver      = 0
    metric_cmpr_type = 0
    metric_threshold = nan
-   metric_fillvalue = nan
    sample_after     = ' '
 
    ptend_name     = ' '
@@ -205,7 +202,6 @@ subroutine conditional_diag_readnl(nlfile)
       if (any( metric_nver     (1:nmetric)<=0     )) call endrun(subname//' error: need non-zero metric_nver for each metric_name')
       if (any( metric_cmpr_type(1:nmetric)==0     )) call endrun(subname//' error: need valid metric_cmpr_type for each metric_name')
       if (any( isnan(metric_threshold(1:nmetric)) )) call endrun(subname//' error: need valid metric_threshold for each metric_name')
-      if (any( isnan(metric_fillvalue(1:nmetric)) )) call endrun(subname//' error: need valid metric_fillvalue for each metric_name')
       if (any( sample_after    (1:nmetric)==' '   )) call endrun(subname//' error: be sure to specify sample_after for each metric_name')
 
       ! Check validity of namelist variables for atmospheric processes to monitor
@@ -257,7 +253,6 @@ subroutine conditional_diag_readnl(nlfile)
    call mpibcast(metric_nver,      nmetric_max,                     mpiint,  0, mpicom)
    call mpibcast(metric_cmpr_type, nmetric_max,                     mpiint,  0, mpicom)
    call mpibcast(metric_threshold, nmetric_max,                     mpir8,   0, mpicom)
-   call mpibcast(metric_fillvalue, nmetric_max,                     mpir8,   0, mpicom)
    call mpibcast(sample_after,     nmetric_max*len(sample_after(1)),mpichar, 0, mpicom)
 
    call mpibcast(ptend_name,    nphysproc_max*len(ptend_name(1)),   mpichar, 0, mpicom)
@@ -294,10 +289,6 @@ subroutine conditional_diag_readnl(nlfile)
    allocate( cnd_diag_info%metric_threshold(nmetric), stat=ierr)
    if ( ierr /= 0 ) call endrun(subname//': allocation of cnd_diag_info%metric_threshold')
    cnd_diag_info%metric_threshold(1:nmetric) = metric_threshold(1:nmetric)
-
-   allocate( cnd_diag_info%metric_fillvalue(nmetric), stat=ierr)
-   if ( ierr /= 0 ) call endrun(subname//': allocation of cnd_diag_info%metric_fillvalue')
-   cnd_diag_info%metric_fillvalue(1:nmetric) = metric_fillvalue(1:nmetric)
 
    allocate( cnd_diag_info%sample_after(nmetric), stat=ierr)
    if ( ierr /= 0 ) call endrun(subname//': allocation of cnd_diag_info%sample_after')
@@ -348,14 +339,13 @@ subroutine conditional_diag_readnl(nlfile)
       write(iulog,*)'-----------------------------------------------------------'
 
       write(iulog,*)
-      write(iulog,'(4x,2x,a10,a6,a12,a20,a20,a20)')'metric','nlev','cmpr_type','threshold','fill_value', 'sample_after'
+      write(iulog,'(4x,2x,a10,a6,a12,a20,a20)')'metric','nlev','cmpr_type','threshold', 'sample_after'
       do ii = 1,cnd_diag_info%nmetric
-         write(iulog,'(i4.3,2x,a10,i6,i12,e20.10,e20.10,a20)') ii,                          &
+         write(iulog,'(i4.3,2x,a10,i6,i12,e20.10,a20)') ii,                          &
                                                 adjustr(cnd_diag_info%metric_name(ii)),     &
                                                         cnd_diag_info%metric_nver(ii),      &
                                                         cnd_diag_info%metric_cmpr_type(ii), &
                                                         cnd_diag_info%metric_threshold(ii), &
-                                                        cnd_diag_info%metric_fillvalue(ii), &
                                                 adjustr(cnd_diag_info%sample_after(ii))
       end do
 

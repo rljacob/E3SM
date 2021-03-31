@@ -22,6 +22,8 @@ module conditional_diag_main
   real(r8),parameter :: ON  = 1._r8
   real(r8),parameter :: OFF = 0._r8
 
+  real(r8),parameter :: FILLVALUE = 0._r8
+
 contains
 
 !======================================================
@@ -151,7 +153,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
         do ii   = 1,nphysproc
 
            fld => state%cnd_diag(im)%fld(ifld)% val(:,:,ii)
-           where(flag.eq.OFF)  fld = cnd_diag_info%metric_fillvalue(im)
+           where(flag.eq.OFF)  fld = FILLVALUE 
 
            outfldname = fld_name_in_output( im, ifld, ii, '_val', cnd_diag_info)
            call outfld( trim(outfldname), fld, pcols, lchnk)
@@ -164,7 +166,7 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
         do ii   = 1,nphysproc
 
            fld => state%cnd_diag(im)%fld(ifld)% inc(:,:,ii)
-           where(flag.eq.OFF)  fld = cnd_diag_info%metric_fillvalue(im)
+           where(flag.eq.OFF)  fld =  FILLVALUE
 
            outfldname = fld_name_in_output( im, ifld, ii, '_inc', cnd_diag_info)
            call outfld( trim(outfldname), fld, pcols, lchnk)

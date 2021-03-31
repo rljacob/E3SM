@@ -6,19 +6,20 @@ module conditional_diag_hist_util
 !-------------------------------------------------
   use cam_abortutils, only: endrun
 
-  use conditional_diag, only: cnd_diag_info, cnd_diag_info_t
+  use conditional_diag, only: cnd_diag_info_t
 
   implicit none
   public
 
 contains
 
-subroutine conditional_diag_output_init(pver)
+subroutine conditional_diag_output_init(pver, cnd_diag_info)
 
   use cam_history,         only: addfld, horiz_only, add_default
   use cam_history_support, only: max_fieldname_len
 
   integer,intent(in) :: pver
+  type(cnd_diag_info_t), intent(in) :: cnd_diag_info
 
   integer          :: im, ifld, iphys, ii
   character(len=4) :: val_inc_suff(2), suff

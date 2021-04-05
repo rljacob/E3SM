@@ -229,12 +229,12 @@ contains
     !-----------------------------------------------------------------------
 
     if ( crop_prog )then
-       allocate(arepr(bounds%begp:bounds%endp)); arepr(bounds%begp : bounds%endp) = spval
-       allocate(aroot(bounds%begp:bounds%endp)); aroot(bounds%begp : bounds%endp) = spval
+       allocate(arepr(bounds%begp:bounds%endp)); arepr(bounds%begp : bounds%endp) = nan
+       allocate(aroot(bounds%begp:bounds%endp)); aroot(bounds%begp : bounds%endp) = nan
     end if
-    allocate(col_plant_ndemand(bounds%begc:bounds%endc)); col_plant_ndemand(bounds%begc : bounds%endc) = spval
-    allocate(col_plant_pdemand(bounds%begc:bounds%endc)); col_plant_pdemand(bounds%begc : bounds%endc) = spval
-    allocate(decompmicc(bounds%begc:bounds%endc,1:nlevdecomp)); decompmicc(bounds%begc:bounds%endc,1:nlevdecomp) = spval
+    allocate(col_plant_ndemand(bounds%begc:bounds%endc)); col_plant_ndemand(bounds%begc : bounds%endc) = nan
+    allocate(col_plant_pdemand(bounds%begc:bounds%endc)); col_plant_pdemand(bounds%begc : bounds%endc) = nan
+    allocate(decompmicc(bounds%begc:bounds%endc,1:nlevdecomp)); decompmicc(bounds%begc:bounds%endc,1:nlevdecomp) = nan
 
     ! set time steps
     dt = real( get_step_size(), r8 )
@@ -325,7 +325,6 @@ contains
     ! !USES:
     !$acc routine seq
     use elm_varctl       , only: iulog
-    !use elm_varctl       , only : cnallocate_carbon_only,cnallocate_carbonnitrogen_only, cnallocate_carbonphosphorus_only
     use elm_varctl      , only : carbon_only          !
     use elm_varctl      , only : carbonnitrogen_only  !
     use elm_varctl      , only : carbonphosphorus_only!
@@ -333,7 +332,6 @@ contains
     use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean
     use elm_varpar       , only: nlevdecomp
     use elm_varcon       , only: nitrif_n2o_loss_frac, secspday
-    !use elm_varctl       , only: cnallocate_carbon_only_set
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -3096,7 +3094,7 @@ contains
                  plant_calloc(p) = plant_nalloc(p) * (c_allometry(p)/n_allometry(p))
                  plant_palloc(p) = plant_calloc(p) * (p_allometry(p)/c_allometry(p))
                  if (veg_vp%nstor(veg_pp%itype(p)) < 1e-6_r8) then
-                     sminp_to_ppool(p) = plant_palloc(p) - retransp_to_ppool(p)
+                     sminp_to_ppool(p) = max(plant_palloc(p) - retransp_to_ppool(p), 0.0_r8)
                  end if
              endif
 

@@ -127,58 +127,108 @@ subroutine conditional_diag_cal_and_output( state, pname, cam_in )
      if (trim(pname).eq.trim(cnd_diag_info%sample_after(im))) then
 
         !----------------------------------------
-        ! Get metric values and send to history
+        ! Get metric values and set flags 
 
         metric => state%cnd_diag(im)%metric
         call get_values( trim(cnd_diag_info%metric_name(im)), state, metric )
 
-        outfldname = metric_name_in_output( im, cnd_diag_info )
-        call outfld( trim(outfldname), metric, pcols, lchnk )
-
-        !----------------------------------------
-        ! Get flag values and send to history
-
         flag => state%cnd_diag(im)%flag
         call get_flags( metric, im, ncol, cnd_diag_info, flag )
+
+        !----------------------------------------
+        ! Apply conditional sampling to metric
+
+        where(flag.eq.OFF)  metric = FILLVALUE
+
+        !-------------------------------------------------
+        ! Send both the metric values and flags to output
+
+        outfldname = metric_name_in_output( im, cnd_diag_info )
+        call outfld( trim(outfldname), metric, pcols, lchnk )
 
         outfldname = flag_name_in_output( im, cnd_diag_info )
         call outfld( trim(outfldname), flag, pcols, lchnk )
 
-        !--------------------------------------------
-        ! Apply conditional sampling to diagnostics;
-        ! send diagnostics to history
+        !----------------------------------------------------------------
+        ! Apply conditional sampling to diagnostics and their increments
+        ! caused by various atmospheric processes.
+        ! Different actions are taken based on the vertical
+        ! dimension sizes of the metric and the diagnostic fields.
+        !----------------------------------------------------------------
+        ! Diagnostic fields
 
         if (cnd_diag_info%l_output_state) then        
-        do ifld = 1,nfld
-        do ii   = 1,nphysproc
+           do ifld = 1,nfld
 
-           fld => state%cnd_diag(im)%fld(ifld)% val(:,:,ii)
-           where(flag.eq.OFF)  fld = FILLVALUE 
+              call apply_masking( flag, state%cnd_diag(im)%fld(ifld)%val ) 
+  
+              do ii = 1,nphysproc
+                 outfldname = fld_name_in_output( im, ifld, ii, '_val', cnd_diag_info)
+                 call outfld( trim(outfldname), state%cnd_diag(im)%fld(ifld)%val(:,:,ii), pcols, lchnk )
+              end do
 
-           outfldname = fld_name_in_output( im, ifld, ii, '_val', cnd_diag_info)
-           call outfld( trim(outfldname), fld, pcols, lchnk)
-        end do
-        end do
+           end do
         end if
 
+        ! Increments
+
         if (cnd_diag_info%l_output_incrm) then        
-        do ifld = 1,nfld
-        do ii   = 1,nphysproc
+           do ifld = 1,nfld
 
-           fld => state%cnd_diag(im)%fld(ifld)% inc(:,:,ii)
-           where(flag.eq.OFF)  fld =  FILLVALUE
+              call apply_masking( flag, state%cnd_diag(im)%fld(ifld)%inc ) 
 
-           outfldname = fld_name_in_output( im, ifld, ii, '_inc', cnd_diag_info)
-           call outfld( trim(outfldname), fld, pcols, lchnk)
-        end do
-        end do
+              do ii = 1,nphysproc
+                 outfldname = fld_name_in_output( im, ifld, ii, '_inc', cnd_diag_info)
+                 call outfld( trim(outfldname), state%cnd_diag(im)%fld(ifld)%inc(:,:,ii), pcols, lchnk )
+              end do
+
+           end do
         end if
 
      end if  !trim(pname).eq.trim(cnd_diag_info%sample_after(im))
   end do ! im = 1,nmetric
-     
 
 end subroutine conditional_diag_cal_and_output
+
+!==================================================================
+subroutine apply_masking( flag, array )
+
+    integer,intent(in)     ::  flag(:,:)
+    real(r8),intent(inout) :: array(:,:,:)
+
+    integer :: flag_nver, array_nver, kk
+    integer :: nphysproc, ii
+    
+     flag_nver = size(flag, 2) 
+    array_nver = size(array,2) 
+     nphysproc = size(array,3)
+
+    if (flag_nver == array_nver) then 
+    ! same dimension size; simply apply masking
+
+       do ii = 1,nphysproc
+          where(flag(:,:).eq.OFF) array(:,:,ii) = FILLVALUE 
+       end do
+
+    elseif (flag_nver == 1 .and. array > 1) then 
+    ! apply the same masking to all vertical levels
+
+       do ii = 1,nphysproc
+       do kk = 1,fld_nver
+          where(flag(:,1).eq.OFF) array(:,kk,ii) = FILLVALUE 
+       end do
+       end do
+
+    else
+    ! flag has multiple levels and field has a different
+    ! number of levels. Do not apply masking
+
+       continue
+
+    end if
+
+end subroutine apply_masking 
+
 
 !========================================================
 subroutine get_values( varname, state, arrayout )

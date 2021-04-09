@@ -43,6 +43,17 @@ module EcosystemDynMod
   use PhenologyFLuxLimitMod , only : phenology_flux_limiter, InitPhenoFluxLimiter
 
   use timeinfoMod
+  use perfMod_GPU
+  use VegetationDataType , only : veg_cf_summary, veg_cf_summary_for_ch4, veg_cf_summary_rr
+  use VegetationDataType , only : veg_nf_summary, veg_ns_summary, veg_cs_Summary
+  use VegetationDataType , only : veg_pf_summary, veg_ps_summary
+  use VegetationDataType , only : veg_cf_setvalues, veg_nf_setvalues, veg_pf_setvalues
+
+  use ColumnDataType , only : col_cf_summary, col_nf_summary, col_pf_Summary
+  use ColumnDataType , only : col_cs_summary, col_ns_summary, col_ps_summary
+  use ColumnDataType , only : col_cf_summary_for_ch4
+  use ColumnDataType , only : col_cf_setvalues, col_nf_setvalues, col_pf_setvalues 
+
 
   !
   ! !PUBLIC TYPES:
@@ -136,37 +147,42 @@ contains
     type(frictionvel_type)   , intent(in)    :: frictionvel_vars
     type(canopystate_type)   , intent(inout) :: canopystate_vars
 
-
+    character(len=64) :: event
     real(r8) :: dt
     !-----------------------------------------------------------------------
     dt = dtime_mod;
 
     ! only do if ed is off
-    call t_startf('PhosphorusWeathering')
+    event = 'PhosphorusWeathering'
+    call t_startGPU(event)
     call PhosphorusWeathering(num_soilc, filter_soilc, &
-        cnstate_vars, dt )
-    call t_stopf('PhosphorusWeathering')
+         cnstate_vars, dt)
+    call t_stopGPU(event)
 
-    call t_startf('PhosphorusAdsportion')
+    event = 'PhosphorusAdsportion'
+    call t_startGPU(event)
     call PhosphorusAdsportion(num_soilc, filter_soilc, &
-        cnstate_vars,dt )
-    call t_stopf('PhosphorusAdsportion')
+         cnstate_vars, dt)
+    call t_stopGPU(event)
 
-    call t_startf('PhosphorusDesoprtion')
+    event = 'PhosphorusDesoprtion'
+    call t_startGPU(event)
     call PhosphorusDesoprtion(num_soilc, filter_soilc, &
-        cnstate_vars, dt )
-    call t_stopf('PhosphorusDesoprtion')
+         cnstate_vars, dt)
+    call t_stopGPU(event)
 
-    call t_startf('PhosphorusOcclusion')
+    event = 'PhosphorusOcclusion'
+    call t_startGPU(event)
     call PhosphorusOcclusion(num_soilc, filter_soilc, &
-        cnstate_vars, dt )
-    call t_stopf('PhosphorusOcclusion')
+         cnstate_vars, dt)
+    call t_stopGPU(event)
 
     if (.not. nu_com_phosphatase) then
-      call t_startf('PhosphorusBiochemMin')
-      call PhosphorusBiochemMin(bounds,num_soilc, filter_soilc, &
-           cnstate_vars, dt)
-      call t_stopf('PhosphorusBiochemMin')
+      event = 'PhosphorusBiochemMin'
+       call t_startGPU(event)
+       call PhosphorusBiochemMin(bounds,num_soilc, filter_soilc, &
+            cnstate_vars, dt)
+       call t_stopGPU(event)
     else
       ! nu_com_phosphatase is true
       !call t_startf('PhosphorusBiochemMin')
@@ -184,48 +200,48 @@ contains
     end if !(.not. (pf_cmode .and. pf_hmode))
        !-----------------------------------------------------------------------
 
-    call t_startf('CNUpdate3')
+    event = 'CNUpdate3'
+    call t_startGPU(event)
+    call NitrogenStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp,dt)
+    call t_stopGPU(event)
 
-    call NitrogenStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-        dt)
-    call t_stopf('CNUpdate3')
-
-
-    call t_startf('PUpdate3')
+    event = 'PUpdate3'
+    call t_startGPU(event)
     call PhosphorusStateUpdate3(bounds,num_soilc, filter_soilc, num_soilp, filter_soilp, &
         cnstate_vars, dt)
-    call t_stopf('PUpdate3')
+    call t_stopGPU(event)
 
-    call t_startf('CNPsum')
+    event = 'CNPsum'
+    call t_startGPU(event)
     call PrecisionControl(num_soilc, filter_soilc, num_soilp, filter_soilp  )
 
-    call col_cf%SummaryCH4(bounds, num_soilc, filter_soilc)
+    call col_cf_summary_for_ch4(col_cf,bounds, num_soilc, filter_soilc)
 
     ! Only update the veg_ data structures if we are using cn
     if(.not.use_fates) then
-       call veg_cf%SummaryCH4(bounds, num_soilp, filter_soilp)
-       call veg_cf%Summary(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'bulk', col_cf)
+       call veg_cf_summary_for_ch4(veg_cf,bounds, num_soilp, filter_soilp)
+       call veg_cf_Summary(veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'bulk', col_cf)
        if ( use_c13 ) then
-          call c13_veg_cf%Summary(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'c13', c13_col_cf)
-          call c13_col_cf%Summary(bounds, num_soilc, filter_soilc, 'c13')
+          call veg_cf_Summary(veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'c13', c13_col_cf)
+          call col_cf_Summary(col_cf,bounds, num_soilc, filter_soilc, 'c13')
        end if
        if ( use_c14 ) then
-          call c14_veg_cf%Summary(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'c14', c14_col_cf)
-          call c14_col_cf%Summary(bounds, num_soilc, filter_soilc, 'c14')
+          call veg_cf_Summary(veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, 'c14', c14_col_cf)
+          call col_cf_Summary(col_cf,bounds, num_soilc, filter_soilc, 'c14')
        end if
-       call veg_cs%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_cs)
+       call veg_cs_Summary(veg_cs,bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_cs)
        if ( use_c13 ) then
-          call c13_veg_cs%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, c13_col_cs)
-          call c13_col_cs%Summary(bounds, num_soilc, filter_soilc)
+          call veg_cs_Summary(c13_veg_cs,bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, c13_col_cs)
+          call col_cs_Summary(c13_col_cs,bounds, num_soilc, filter_soilc)
        end if
        if ( use_c14 ) then
-          call c14_veg_cs%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, c14_col_cs)
-          call c14_col_cs%Summary(bounds, num_soilc, filter_soilc)
+          call veg_cs_Summary(c14_veg_cs,bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, c14_col_cs)
+          call col_cs_Summary(c14_col_cs,bounds, num_soilc, filter_soilc)
        end if
-       call veg_nf%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_nf)
-       call veg_ns%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_ns)
-       call veg_pf%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_pf)
-       call veg_ps%Summary(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_ps)
+       call veg_nf_Summary(veg_nf, bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_nf)
+       call veg_ns_Summary(veg_ns, bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_ns)
+       call veg_pf_Summary(veg_pf, bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_pf)
+       call veg_ps_Summary(veg_ps, bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, col_ps)
     else
        ! In this scenario, we simply zero all of the
        ! column level variables that would had been upscaled
@@ -238,17 +254,16 @@ contains
        call col_pf%ZeroForFates(bounds,num_soilc, filter_soilc)
     end if
 
-    call col_cf%Summary(bounds, num_soilc, filter_soilc, 'bulk')
-    call col_cs%Summary(bounds, num_soilc, filter_soilc)
+    call col_cf_Summary(col_cf,bounds, num_soilc, filter_soilc, 'bulk')
+    call col_cs_Summary(col_cs,bounds, num_soilc, filter_soilc)
 
-    call col_nf%Summary(bounds, num_soilc, filter_soilc)
-    call col_ns%Summary(bounds, num_soilc, filter_soilc)
+    call col_nf_Summary(col_nf,bounds, num_soilc, filter_soilc)
+    call col_ns_Summary(col_ns,bounds, num_soilc, filter_soilc)
 
-    call col_pf%Summary(bounds, num_soilc, filter_soilc)
-    call col_ps%Summary(bounds, num_soilc, filter_soilc)
+    call col_pf_Summary(col_pf,bounds, num_soilc, filter_soilc)
+    call col_ps_Summary(col_ps,bounds, num_soilc, filter_soilc)
 
-    call t_stopf('CNPsum')
-
+    call t_stopGPU(event)
 
   end subroutine EcosystemDynLeaching
 
@@ -302,6 +317,7 @@ contains
     type(ch4_type)           , intent(in)    :: ch4_vars
     type(photosyns_type)     , intent(in)    :: photosyns_vars
 
+    character(len=64) :: event
     real(r8) :: dt, dayspyr
     integer  :: year, mon, day, sec
     !-----------------------------------------------------------------------
@@ -316,51 +332,55 @@ contains
     ! zero the C and N fluxes
     ! --------------------------------------------------
 
-    call t_startf('CNZero')
+    event = 'CNZero'
+    call t_startGPU(event)
 
     if(.not.use_fates) then
-       call veg_cf%SetValues(num_soilp, filter_soilp, 0._r8)
+       call veg_cf_SetValues(veg_cf, num_soilp, filter_soilp, 0._r8)
        if ( use_c13 ) then
-          call c13_veg_cf%SetValues(num_soilp, filter_soilp, 0._r8)
-          call c13_col_cf%SetValues(num_soilc, filter_soilc, 0._r8)
+          call veg_cf_setvalues(c13_veg_cf,num_soilp, filter_soilp, 0._r8)
+          call col_cf_SetValues(c13_col_cf,num_soilc, filter_soilc, 0._r8)
        end if
        if ( use_c14 ) then
-          call c14_veg_cf%SetValues(num_soilp, filter_soilp, 0._r8)
-          call c14_col_cf%SetValues(num_soilc, filter_soilc, 0._r8)
+          call veg_cf_setvalues(c14_veg_cf,num_soilp, filter_soilp, 0._r8)
+          call col_cf_SetValues(c14_col_cf,num_soilc, filter_soilc, 0._r8)
        end if
-       call veg_nf%SetValues (num_soilp, filter_soilp, 0._r8)
-       call veg_pf%SetValues (num_soilp, filter_soilp, 0._r8)
+       call veg_nf_setvalues (veg_nf,num_soilp, filter_soilp, 0._r8)
+       call veg_pf_SetValues (veg_pf,num_soilp, filter_soilp, 0._r8)
     end if
 
-    call col_cf%SetValues(num_soilc, filter_soilc, 0._r8)
-    call col_nf%SetValues(num_soilc, filter_soilc, 0._r8)
-    call col_pf%SetValues(num_soilc, filter_soilc, 0._r8)
+    call col_cf_SetValues(col_cf,num_soilc, filter_soilc, 0._r8)
+    call col_nf_SetValues(col_nf,num_soilc, filter_soilc, 0._r8)
+    call col_pf_SetValues(col_pf,num_soilc, filter_soilc, 0._r8)
 
-    call t_stopf('CNZero')
+    call t_stopGPU(event)
 
     ! --------------------------------------------------
     ! Nitrogen Deposition, Fixation and Respiration, phosphorus dynamics
     ! --------------------------------------------------
 
-    call t_startf('CNDeposition')
+    event = 'CNDeposition'
+    call t_startGPU(event)
     call NitrogenDeposition(bounds, &
          atm2lnd_vars, dt )
-    call t_stopf('CNDeposition')
+    call t_stopGPU(event)
 
+    event = 'CNFixation'
     if ( (.not. nu_com_nfix) .or. use_fates) then
-       call t_startf('CNFixation')
+      call t_startGPU(event)
        call NitrogenFixation( num_soilc, filter_soilc, dayspyr)
-       call t_stopf('CNFixation')
+       call t_stopGPU(event)
     else
        ! nu_com_nfix is true
-       call t_startf('CNFixation')
+       call t_startGPU(event)
        call NitrogenFixation_balance( num_soilc, filter_soilc, cnstate_vars )
-       call t_stopf('CNFixation')
+       call t_stopGPU(event)
     end if
 
    if(.not.use_fates)then
 
-       call t_startf('MaintenanceResp')
+       event = 'MaintenanceResp'
+       call t_startGPU(event)
        if (crop_prog) then
           call NitrogenFert(bounds, num_soilc,filter_soilc )
 
@@ -370,7 +390,7 @@ contains
        ! This is auto-trophic respiration, thus don't call this for FATES
        call MaintenanceResp(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
             canopystate_vars, soilstate_vars,  photosyns_vars )
-       call t_stopf('MaintenanceResp')
+       call t_stopGPU(event)
 
     end if
 
@@ -378,22 +398,23 @@ contains
     if ( nu_com .ne. 'RD') then
        ! for P competition purpose, calculate P fluxes that will potentially increase solution P pool
        ! then competitors take up solution P
-       call t_startf('PhosphorusWeathering')
+       event ='PhosphorusWeathering'
+       call t_startGPU(event)
        call PhosphorusWeathering(num_soilc, filter_soilc, cnstate_vars, dt)
+       call t_stopGPU(event)
 
-       call t_stopf('PhosphorusWeathering')
-
+       event = 'PhosphorusBiochemMin'
        if (.not. nu_com_phosphatase) then
-           call t_startf('PhosphorusBiochemMin')
+           call t_startGPU(event)
            call PhosphorusBiochemMin(bounds,num_soilc, filter_soilc, &
                 cnstate_vars, dt)
-           call t_stopf('PhosphorusBiochemMin')
+           call t_stopGPU(event)
        else
            ! nu_com_phosphatase is true
-           call t_startf('PhosphorusBiochemMin')
+           call t_startGPU(event)
            call PhosphorusBiochemMin_balance(bounds,num_soilc, filter_soilc, &
                 cnstate_vars, dt)
-           call t_stopf('PhosphorusBiochemMin')
+           call t_stopGPU(event)
        end if
     end if
 
@@ -401,9 +422,10 @@ contains
     ! Phosphorus Deposition ! X.SHI
     ! --------------------------------------------------
 
-    call t_startf('PhosphorusDeposition')
+    event = 'PhosphorusDeposition'
+    call t_startGPU(event)
     call PhosphorusDeposition(bounds,  atm2lnd_vars )
-    call t_stopf('PhosphorusDeposition')
+    call t_stopGPU(event)
 
     !-------------------------------------------------------------------------------------------------
     ! plfotran: 'decomp_rate_constants' must be calculated before entering "clm_interface"
@@ -427,13 +449,13 @@ contains
     ! pflotran: call 'Allocation1' to obtain potential N demand for support initial GPP
     if(.not.use_fates)then
 
-       call t_startf('CNAllocation - phase-1')
+       event = 'CNAllocation - phase-1'
+       call t_startGPU(event)
        call Allocation1_PlantNPDemand (bounds                             , &
                 num_soilc, filter_soilc, num_soilp, filter_soilp            , &
                 photosyns_vars, crop_vars, canopystate_vars, cnstate_vars   , &
                dt, year )
-
-       call t_stopf('CNAllocation - phase-1')
+       call t_stopGPU(event)
     end if
 
 
@@ -505,7 +527,7 @@ contains
     type(energyflux_type)    , intent(in)    :: energyflux_vars
 !
     type(sedflux_type)       , intent(in)    :: sedflux_vars
-
+    character(len=64) :: event
     real(r8) :: dt
     integer :: c13, c14
     c13 = 0
@@ -514,7 +536,8 @@ contains
     dt = dtime_mod
     ! Call the main CN routines
 
-    call t_startf('SoilLittDecompAlloc')
+    event = 'SoilLittDecompAlloc'
+    call t_startGPU(event)
     !----------------------------------------------------------------
     if(.not.use_elm_interface) then
        ! directly run elm-bgc
@@ -527,8 +550,9 @@ contains
     end if !if(.not.use_elm_interface)
 
     call t_stopf('SoilLittDecompAlloc')
-    call t_startf('SoilLittDecompAlloc2')
 
+    event = 'SoilLittDecompAlloc2'
+    call t_startGPU(event)
     !----------------------------------------------------------------
     ! SoilLittDecompAlloc2 is called by both elm-bgc & pflotran
     ! pflotran: call 'SoilLittDecompAlloc2' to calculate some diagnostic variables and 'fpg' for plant N uptake
@@ -538,7 +562,7 @@ contains
              cnstate_vars, ch4_vars,                  &
              crop_vars, atm2lnd_vars,                 &
              dt )
-    call t_stopf('SoilLittDecompAlloc2')
+    call t_stopGPU(event)
 
     !----------------------------------------------------------------
 
@@ -552,27 +576,29 @@ contains
         ! depends on current time-step fluxes to new growth on the last
         ! litterfall timestep in deciduous systems
 
-        call t_startf('Phenology')
+        event = 'Phenology'
+        call t_startGPU(event)
         call Phenology(num_soilc, filter_soilc, num_soilp, filter_soilp, &
              num_pcropp, filter_pcropp, doalb, atm2lnd_vars, &
              crop_vars, canopystate_vars, soilstate_vars, &
              cnstate_vars )
-        call t_stopf('Phenology')
+        call t_stopGPU(event)
 
         !--------------------------------------------
         ! Growth respiration
         !--------------------------------------------
 
-        call t_startf('GrowthResp')
+        event = 'GrowthResp'
+        call t_startGPU(event)
         call GrowthResp(num_soilp, filter_soilp )
-        call t_stopf('GrowthResp')
+        call t_stopGPU(event)
 
-        call veg_cf%SummaryRR(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, col_cf)
+        call veg_cf_summary_rr(veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, col_cf)
         if(use_c13) then
-           call c13_veg_cf%SummaryRR(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, c13_col_cf)
+           call veg_cf_summary_rr(c13_veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, c13_col_cf)
         endif
         if(use_c14) then
-           call c14_veg_cf%SummaryRR(bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, c14_col_cf)
+           call veg_cf_summary_rr(c14_veg_cf,bounds, num_soilp, filter_soilp, num_soilc, filter_soilc, c14_col_cf)
         endif
 
 
@@ -581,19 +607,21 @@ contains
         !--------------------------------------------
 
         if( use_dynroot ) then
-            call t_startf('RootDynamics')
+            event = 'RootDynamics'
+            call t_startGPU(event)
 
             call RootDynamics(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
                   canopystate_vars,   &
                   cnstate_vars, crop_vars, energyflux_vars, soilstate_vars)
-            call t_stopf('RootDynamics')
+            call t_stopGPU(event)
         end if
 
         !--------------------------------------------
         ! CNUpdate0
         !--------------------------------------------
 
-       call t_startf('CNUpdate0')
+       event = 'CNUpdate0'
+       call t_startGPU(event)
        call CarbonStateUpdate0(num_soilp, filter_soilp,veg_cs,veg_cf, dt)
        if ( use_c13 ) then
           call CarbonStateUpdate0(num_soilp, filter_soilp,veg_cs,veg_cf, dt)
@@ -601,29 +629,30 @@ contains
        if ( use_c14 ) then
           call CarbonStateUpdate0(num_soilp, filter_soilp,veg_cs,veg_cf ,dt)
        end if
-       call t_stopf('CNUpdate0')
+       call t_stopGPU(event)
 
         !--------------------------------------------
         if(use_pheno_flux_limiter)then
-          call t_startf('phenology_flux_limiter')
+          event = 'phenology_flux_limiter'
+          call t_startGPU(event)
           call phenology_flux_limiter(bounds, num_soilc, filter_soilc,&
             num_soilp, filter_soilp, crop_vars, cnstate_vars,  &
             veg_cf, veg_cs, &
             c13_veg_cf, c13_veg_cs, &
             c14_veg_cf, c14_veg_cs, &
             veg_nf, veg_ns, veg_pf, veg_ps)
-          call t_stopf('phenology_flux_limiter')
+          call t_stopGPU(event)
         endif
-        call t_startf('CNLitterToColumn')
+        event = 'CNLitterToColumn'
+        call t_startGPU(event)
         call CNLitterToColumn(num_soilp, filter_soilp, cnstate_vars )
-
-        call t_stopf('CNLitterToColumn')
+        call t_stopGPU(event)
 
         !--------------------------------------------
         ! Update1
         !--------------------------------------------
-
-        call t_startf('CNUpdate1')
+        event = 'CNUpdate1'
+        call t_startGPU(event)
 
         if ( use_c13 ) then
           call CarbonIsoFlux1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
@@ -668,25 +697,26 @@ contains
         cnstate_vars, dt)
 
 
-   call t_stopf('CNUpdate1')
+   call t_stopGPU(event)
 
-   call t_startf('SoilLittVertTransp')
+   event = 'SoilLittVertTransp'
+   call t_startGPU(event)
    call SoilLittVertTransp(bounds, &
             num_soilc, filter_soilc, &
             canopystate_vars, cnstate_vars )
-       call t_stopf('SoilLittVertTransp')
+       call t_stopGPU(event)
    if(.not.use_fates)then
-
-       call t_startf('CNGapMortality')
+       event = 'CNGapMortality'
+       call t_startGPU(event)
        call GapMortality( num_soilc, filter_soilc, num_soilp, filter_soilp,&
                               cnstate_vars )
-       call t_stopf('CNGapMortality')
+       call t_stopGPU(event)
 
        !--------------------------------------------
        ! Update2
        !--------------------------------------------
-
-       call t_startf('CNUpdate2')
+       event = 'CNUpdate2'
+       call t_startGPU(event)
 
        if ( use_c13 ) then
            call CarbonIsoFlux2(num_soilc, filter_soilc, num_soilp, filter_soilp, &
@@ -766,14 +796,15 @@ contains
             cnstate_vars)
 
 
-       call t_stopf('CNUpdate2')
+       call t_stopGPU(event)
 
    end if
 
    if ( use_erosion ) then
-       call t_startf('ErosionFluxes')
+       event = 'ErosionFluxes'
+       call t_startGPU(event)
        call ErosionFluxes(bounds, num_soilc, filter_soilc, soilstate_vars, sedflux_vars )
-       call t_stopf('ErosionFluxes')
+       call t_stopGPU(event)
    end if
 
    !--------------------------------------------
@@ -813,19 +844,19 @@ contains
                cnstate_vars)
        end if
 
-       call veg_cf%SummaryCH4(bounds, num_soilp, filter_soilp)
+       call veg_cf_summary_for_ch4(veg_cf,bounds, num_soilp, filter_soilp)
        if( use_c13 ) then
-          call c13_col_cf%SummaryCH4(bounds, num_soilc, filter_soilc)
-          call c13_veg_cf%SummaryCH4(bounds, num_soilp, filter_soilp)
+          call col_cf_summary_for_ch4(c13_col_cf,bounds, num_soilc, filter_soilc)
+          call veg_cf_summary_for_ch4(c13_veg_cf,bounds, num_soilp, filter_soilp)
        endif
        if( use_c14 ) then
-          call c14_col_cf%SummaryCH4(bounds, num_soilc, filter_soilc)
-          call c14_veg_cf%SummaryCH4(bounds, num_soilp, filter_soilp)
+          call col_cf_summary_for_ch4(c14_col_cf,bounds, num_soilc, filter_soilc)
+          call veg_cf_summary_for_ch4(c14_veg_cf,bounds, num_soilp, filter_soilp)
        endif
 
   end if !end of if not use_fates block
 
-  call col_cf%SummaryCH4(bounds, num_soilc, filter_soilc)
+  call col_cf_summary_for_ch4(col_cf,bounds, num_soilc, filter_soilc)
 
 
 

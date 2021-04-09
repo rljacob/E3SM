@@ -40,7 +40,7 @@ module VegetationDataType
   ! !PUBLIC TYPES:
   implicit none
   save
-  private
+  public
   !-----------------------------------------------------------------------
   ! Define the data structure that holds energy state information at the vegetation level.
   !-----------------------------------------------------------------------

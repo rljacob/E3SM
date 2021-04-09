@@ -50,7 +50,7 @@ module ColumnDataType
   ! !PUBLIC TYPES:
   implicit none
   save
-  private
+  public
   !
   ! NOTE(bandre, 2013-10) according to Charlie Koven, nfix_timeconst
   ! is currently used as a flag and rate constant. Rate constant: time

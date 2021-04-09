@@ -193,7 +193,7 @@ end subroutine conditional_diag_cal_and_output
 !==================================================================
 subroutine apply_masking( flag, array )
 
-    integer,intent(in)     ::  flag(:,:)
+    real(r8),intent(in)    ::  flag(:,:)
     real(r8),intent(inout) :: array(:,:,:)
 
     integer :: flag_nver, array_nver, kk
@@ -210,11 +210,11 @@ subroutine apply_masking( flag, array )
           where(flag(:,:).eq.OFF) array(:,:,ii) = FILLVALUE 
        end do
 
-    elseif (flag_nver == 1 .and. array > 1) then 
+    elseif (flag_nver == 1 .and. array_nver > 1) then 
     ! apply the same masking to all vertical levels
 
        do ii = 1,nphysproc
-       do kk = 1,fld_nver
+       do kk = 1,array_nver
           where(flag(:,1).eq.OFF) array(:,kk,ii) = FILLVALUE 
        end do
        end do

@@ -109,7 +109,6 @@ EOF
 
   my %opts = ( 
                namelist   => $namelist,
-               model      => "clm4_5",
                var        => undef,
                hgrid      => undef,
                config     => undef,
@@ -130,7 +129,6 @@ EOF
         "f|file=s"     => \$opts{'file'},
         "n|namelist=s" => \$opts{'namelist'},
         "v|var=s"      => \$opts{'var'},
-        "p|phys=s"     => \$opts{'model'},
         "r|res=s"      => \$opts{'hgrid'},
         "config=s"     => \$opts{'config'},
         "cesm"         => \$opts{'cesm'},
@@ -178,11 +176,10 @@ EOF
   }
   # List of input options
   my %inputopts;
-  my $model                  = $opts{'model'};
   my @nl_definition_files    = ( "$cfgdir/namelist_files/namelist_definition_drv.xml",
-                                 "$cfgdir/namelist_files/namelist_definition_$model.xml" 
+                                 "$cfgdir/namelist_files/namelist_definition.xml" 
                                );
-  $inputopts{empty_cfg_file} = "$cfgdir/config_files/config_definition_$model.xml";
+  $inputopts{empty_cfg_file} = "$cfgdir/config_files/config_definition.xml";
   $inputopts{nldef_files}    = \@nl_definition_files;
   $inputopts{namelist}       = $opts{namelist};
   $inputopts{printing}       = $printing;
@@ -246,8 +243,8 @@ EOF
      $settings{'notest'}       = ! $opts{'test'};
      $settings{'csmdata'}      = $inputopts{csmdata};
   } else {
-     my @files = ( "$cfgdir/namelist_files/namelist_defaults_${model}.xml", 
-                   "$cfgdir/namelist_files/namelist_defaults_${model}_tools.xml", 
+     my @files = ( "$cfgdir/namelist_files/namelist_defaults.xml", 
+                   "$cfgdir/namelist_files/namelist_defaults_tools.xml", 
                    "$cfgdir/namelist_files/namelist_defaults_drv.xml",
                    "$cfgdir/namelist_files/namelist_defaults_drydep.xml",
                  );

@@ -54,8 +54,8 @@ module clm_interface_pflotranMod
   use clm_interface_dataType, only : clm_interface_data_type
 
 #ifdef CLM_PFLOTRAN
-  !use clm_pflotran_interface_data ! due to pflotran version, either 'clm_pflotran_interface_data' or 'clmpf_interface_data' like below
-  use clmpf_interface_data
+  !use clmpf_interface_data ! due to pflotran version, either 'clm_pflotran_interface_data' or 'clmpf_interface_data' like below
+  use clm_pflotran_interface_data
   use pflotran_clm_main_module
   use pflotran_clm_setmapping_module
 #include "petsc/finclude/petscsys.h"
@@ -1089,7 +1089,9 @@ contains
          pf_tmode = .true.
       endif
 
-      if (pflotran_m%option%th_freezing .and. pf_tmode) then
+      ! up to pflotran version, there are 2 editions: option%th_freezing or option%use_th_freezing. 
+      !if (pflotran_m%option%th_freezing .and. pf_tmode) then
+      if (pflotran_m%option%use_th_freezing .and. pf_tmode) then
          pf_frzmode = .true.
       else
          pf_frzmode = .false.
@@ -4750,8 +4752,8 @@ contains
             fc = err_index
             write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
             write(iulog,'(A35,I15,A10,I20)')"Carbon Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep=",get_nstep()
-            write(iulog,'(10A15)')"errcb", "C_in-out", "Cdelta","Cinputs","Coutputs","Cbeg","Cend"
-            write(iulog,'(10E15.6)')pf_errcb(fc), (pf_cinputs(fc) - pf_coutputs(fc))*dtime, pf_cdelta(fc), &
+            write(iulog,'(10A18)')"errcb", "C_in-out", "Cdelta","Cinputs","Coutputs","Cbeg","Cend"
+            write(iulog,'(10E18.10)')pf_errcb(fc), (pf_cinputs(fc) - pf_coutputs(fc))*dtime, pf_cdelta(fc), &
                                     pf_cinputs(fc)*dtime,pf_coutputs(fc)*dtime,pf_cbeg(fc),pf_cend(fc)
             write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:end  "
          end if
@@ -4958,26 +4960,26 @@ contains
             fc = err_index
             write(iulog,'(A,70(1h-))')">>>--------  PFLOTRAN Mass Balance Check:beg  "
             write(iulog,'(A35,I15,A10,I20)')"Nitrogen Balance Error in Column = ",filters(ifilter)%soilc(fc), " @ nstep = ",get_nstep()
-            write(iulog,'(10A15)')  "errnb", "N_in-out", "Ndelta",                          &
+            write(iulog,'(10A18)')  "errnb", "N_in-out", "Ndelta",                          &
                                     "Ninputs","Noutputs", "Nbeg","Nend"
-            write(iulog,'(10E15.6)')pf_errnb(fc), (pf_ninputs(fc) - pf_noutputs(fc))*dtime, pf_ndelta(fc),  &
+            write(iulog,'(10E18.10)')pf_errnb(fc), (pf_ninputs(fc) - pf_noutputs(fc))*dtime, pf_ndelta(fc),  &
                                     pf_ninputs(fc)*dtime,pf_noutputs(fc)*dtime,pf_nbeg(fc),pf_nend(fc)
             write(iulog,*)
-            write(iulog,'(10A15)')  "errnb_org","Ndelta_org","Nbeg_org","Nend_org",         &
+            write(iulog,'(10A18)')  "errnb_org","Ndelta_org","Nbeg_org","Nend_org",         &
                                     "gross_nmin", "actual_immob", "pot_immob"
-            write(iulog,'(10E15.6)')pf_errnb_org(fc),pf_ndelta_org(fc),pf_nbeg_org(fc),pf_nend_org(fc),     &
+            write(iulog,'(10e18.10)')pf_errnb_org(fc),pf_ndelta_org(fc),pf_nbeg_org(fc),pf_nend_org(fc),     &
                                     gross_nmin(fc)*dtime,actual_immob(fc)*dtime,potential_immob(fc)*dtime
             write(iulog,*)
-            write(iulog,'(10A15)')  "errnb_min","Ndelta_min","Nbeg_min","Nend_min",         &
+            write(iulog,'(10A18)')  "errnb_min","Ndelta_min","Nbeg_min","Nend_min",         &
                                     "Nend_no3","Nend_nh4", "Nend_nh4sorb"
-            write(iulog,'(10E15.6)')pf_errnb_min(fc), pf_ndelta_min(fc),pf_nbeg_min(fc),pf_nend_min(fc),    &
+            write(iulog,'(10e18.10)')pf_errnb_min(fc), pf_ndelta_min(fc),pf_nbeg_min(fc),pf_nend_min(fc),    &
                                     pf_nend_no3(fc),pf_nend_nh4(fc),pf_nend_nh4sorb(fc)
             write(iulog,*)
-            write(iulog,'(10A15)')  "Ninputs_org","Ninputs_min",                            &
+            write(iulog,'(10A18)')  "Ninputs_org","Ninputs_min",                            &
                                     "Noutputs_dec","Noutputs_nit","Noutputs_denit",         &
                                     "Noutputs_gas","Noutputs_veg",                          &
                                     "plant_Ndemand","Ngas_dec","Ngas_min"
-            write(iulog,'(10E15.6)')pf_ninputs_org(fc)*dtime,pf_ninputs_min(fc)*dtime,              &
+            write(iulog,'(10e18.10)')pf_ninputs_org(fc)*dtime,pf_ninputs_min(fc)*dtime,              &
                   pf_noutputs_dec(fc)*dtime,pf_noutputs_nit(fc)*dtime,pf_noutputs_denit(fc)*dtime,  &
                                     pf_noutputs_gas(fc)*dtime,pf_noutputs_veg(fc)*dtime,            &
                                     plant_ndemand(fc)*dtime,pf_ngas_dec(fc)*dtime,pf_ngas_min(fc)*dtime

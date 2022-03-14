@@ -285,7 +285,6 @@ contains
             if (use_pflotran .and. pf_cmode) then
                write(iulog,*)'pf_delta_decompc      = ',col_decompc_delta(c)*dt
             end if
-
             call endrun(msg=errMsg(__FILE__, __LINE__))
          end if
       end if !use_fates

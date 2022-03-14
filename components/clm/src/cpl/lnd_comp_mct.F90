@@ -42,7 +42,7 @@ contains
     use abortutils       , only : endrun
     use clm_time_manager , only : get_nstep, get_step_size, set_timemgr_init, set_nextsw_cday
     use clm_initializeMod, only : initialize1, initialize2, initialize3
-    use clm_instMod      , only : lnd2atm_vars, lnd2glc_vars
+    use clm_instMod      , only : lnd2atm_vars, lnd2glc_vars, lnd2iac_vars
     use clm_varctl       , only : finidat,single_column, clm_varctl_set, iulog, noland
     use clm_varctl       , only : inst_index, inst_suffix, inst_name
     use clm_varorb       , only : eccen, obliqr, lambm0, mvelpp
@@ -261,6 +261,7 @@ contains
        call endrun( sub//' ERROR: atmosphere model MUST send aerosols to CLM' )
     end if
 
+
     ! Initialize clm gsMap, clm domain and clm attribute vectors
 
     call get_proc_bounds( bounds )
@@ -296,9 +297,9 @@ contains
     end if
 
     ! Create land export state 
-
+    ! note that lnd2iac_vars is not set yet
     if (atm_present) then 
-      call lnd_export(bounds, lnd2atm_vars, lnd2glc_vars, l2x_l%rattr)
+      call lnd_export(bounds, lnd2atm_vars, lnd2glc_vars, lnd2iac_vars, l2x_l%rattr)
     endif
 
     ! Fill in infodata settings
@@ -346,6 +347,7 @@ contains
     ! !USES:
     use shr_kind_mod    ,  only : r8 => shr_kind_r8
     use clm_instMod     , only : lnd2atm_vars, atm2lnd_vars, lnd2glc_vars, glc2lnd_vars
+    use clm_instMod     , only : lnd2iac_vars, iac2lnd_vars
     use clm_driver      ,  only : clm_drv
     use clm_time_manager,  only : get_curr_date, get_nstep, get_curr_calday, get_step_size
     use clm_time_manager,  only : advance_timestep, set_nextsw_cday,update_rad_dtime
@@ -455,7 +457,8 @@ contains
     ! Map to clm (only when state and/or fluxes need to be updated)
 
     call t_startf ('lc_lnd_import')
-    call lnd_import( bounds, x2l_l%rattr, atm2lnd_vars, glc2lnd_vars)
+    call lnd_import( bounds, x2l_l%rattr, atm2lnd_vars, glc2lnd_vars, &
+                     iac2lnd_vars)
     call t_stopf ('lc_lnd_import')
 
     ! Use infodata to set orbital values if updated mid-run
@@ -513,7 +516,7 @@ contains
 
 #ifndef CPL_BYPASS       
        call t_startf ('lc_lnd_export')
-       call lnd_export(bounds, lnd2atm_vars, lnd2glc_vars, l2x_l%rattr)
+       call lnd_export(bounds, lnd2atm_vars, lnd2glc_vars, lnd2iac_vars, l2x_l%rattr)
        call t_stopf ('lc_lnd_export')
 #endif
 

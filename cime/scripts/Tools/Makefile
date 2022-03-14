@@ -63,6 +63,7 @@ endif
 # currently, C++ code is included if and only if we're linking to the
 # trilinos library or the Albany library.
 USE_CXX = FALSE
+#USE_CXX = TRUE
 ifeq ($(strip $(USE_TRILINOS)), TRUE)
    USE_CXX = TRUE
 endif
@@ -81,6 +82,24 @@ ifndef MOD_SUFFIX
    MOD_SUFFIX := mod
 endif
 
+USE_GCAM := TRUE
+# These are needed for GCAM - need to have a USE_GCAM kind of tag here.
+ifeq ($(strip $(USE_GCAM)), TRUE)
+  # Hardcoded to my local directory on compy.  Obviously not correct
+  # XDIR := /blues/gpfs/home/ac.shippert/local/lib - anvil
+  XDIR := /qfs/people/crai556/xerces_intel_19.0.3/lib
+
+  # Static link options
+  #GLIBS := $(XDIR)/libxerces-c.a 
+  #GLIBS := -Wl,-Bstatic -L$(XDIR) -lxerces-c -Wl,-Bdynamic
+
+  #Dynamic link - need both rpath AND -L.  
+  GLIBS := -Wl,-rpath,$(XDIR) -L$(XDIR) -lxerces-c -lstdc++
+  #GLIBS := -Xlinker -rpath -Xlinker $(XDIR) -L$(XDIR) -lxerces-c -lstdc++
+
+endif
+
+
 #===============================================================================
 # set CPP options (must use this before any flags or cflags settings)
 #===============================================================================
@@ -97,6 +116,8 @@ ifeq ($(strip $(DEBUG)),TRUE)
 else
    CPPDEFS += -DNDEBUG
 endif
+
+CPPDEFS += -DNDEBUG
 
 # USE_ESMF_LIB is currently only defined in env_build.xml
 ifeq ($(USE_ESMF_LIB), TRUE)
@@ -508,8 +529,12 @@ INCLDIR +=	-I$(INSTALL_SHAREDPATH)/include
 #
 # Use the MCT dir for the cache for all configure calls because it is the first one
 #
-CFLAGS+=$(CPPDEFS)
-CXXFLAGS+=$(CFLAGS)
+# Enable support of larger static arrrays for the double precision LUT
+CFLAGS+= -mcmodel=medium
+CFLAGS+= $(CPPDEFS)
+
+# Instead of appending CFLAGS, prepend it, so that the C++ standards overwrite 
+CXXFLAGS := $(CFLAGS) $(CXXFLAGS)
 CONFIG_ARGS +=  CC="$(CC)" FC="$(FC)" MPICC="$(MPICC)" \
                 MPIFC="$(MPIFC)" FCFLAGS="$(FFLAGS) $(FREEFLAGS) $(INCLDIR)" \
                 CPPDEFS="$(CPPDEFS)" CFLAGS="$(CFLAGS) -I.. $(INCLDIR)" \
@@ -566,10 +591,21 @@ endif
 # System libraries (netcdf, mpi, pnetcdf, esmf, trilinos, etc.)
 ifndef SLIBS
   ifeq ($(NETCDF_SEPARATE), FALSE)
-    SLIBS := -L$(LIB_NETCDF) -lnetcdff -lnetcdf
+    SLIBS := -L$(LIB_NETCDF) -lnetcdff -lnetcdf 
   else ifeq ($(NETCDF_SEPARATE), TRUE)
     SLIBS := -L$(LIB_NETCDF_FORTRAN) -L$(LIB_NETCDF_C) -lnetcdff -lnetcdf
   endif
+endif
+
+# Need to add this here on anvil to find dynamic load directories for netcdf
+ifdef LIB_NETCDF_FORTRAN
+   SLIBS += -Xlinker -rpath -Xlinker $(LIB_NETCDF_FORTRAN)  
+endif
+ifdef LIB_NETCDF_C
+   SLIBS += -Xlinker -rpath -Xlinker $(LIB_NETCDF_C)
+endif
+ifdef LIB_NETCDF
+   SLIBS += -Xlinker -rpath -Xlinker $(LIB_NETCDF)
 endif
 
 ifdef LAPACK_LIBDIR
@@ -906,7 +942,7 @@ install_lib: $(COMPLIB)
 
 
 $(EXEC_SE): $(OBJS) $(ULIBDEP) $(CSMSHARELIB) $(MCTLIBS) $(PIOLIB) $(GPTLLIB)
-	$(LD) -o $(EXEC_SE) $(OBJS) $(CLIBS) $(ULIBS) $(SLIBS) $(MLIBS) $(F90_LDFLAGS)
+	$(LD) -o $(EXEC_SE) $(OBJS) $(CLIBS) $(ULIBS) $(SLIBS) $(MLIBS) $(GLIBS) $(F90_LDFLAGS) 
 
 $(COMPLIB): $(OBJS)
 	$(AR) $(ARFLAGS) $(COMPLIB) $(OBJS)

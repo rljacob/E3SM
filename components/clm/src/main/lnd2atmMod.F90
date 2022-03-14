@@ -70,7 +70,7 @@ contains
     type(lnd2atm_type)    , intent(inout) :: lnd2atm_vars 
     !
     ! !LOCAL VARIABLES:
-    integer :: g                                    ! index
+    integer :: g, p                                    ! index
     
     !------------------------------------------------------------------------
 

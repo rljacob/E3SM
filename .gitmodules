@@ -15,3 +15,7 @@
 	path = externals/kokkos
 	url = git@github.com:kokkos/kokkos.git
 	branch = develop
+[submodule "gcam"]
+	path = components/gcam/src
+	url = git@github.com:E3SM-Project/giac
+	branch = working

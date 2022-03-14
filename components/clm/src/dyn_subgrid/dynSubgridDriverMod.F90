@@ -31,6 +31,7 @@ module dynSubgridDriverMod
   use WaterstateType      , only : waterstate_type
   use TemperatureType     , only : temperature_type
   use glc2lndMod          , only : glc2lnd_type
+  use iac2lndMod          , only : iac2lnd_type
   use dynLandunitAreaMod  , only : update_landunit_weights
   use CropType            , only : crop_type
   use PhosphorusStateType , only : phosphorusstate_type
@@ -152,7 +153,7 @@ contains
        grc_cs, grc_cf, &
        carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars, &
        nitrogenstate_vars, nitrogenflux_vars, glc2lnd_vars,&
-       phosphorusstate_vars,phosphorusflux_vars, crop_vars)
+       phosphorusstate_vars,phosphorusflux_vars, crop_vars, iac2lnd_vars)
     !
     ! !DESCRIPTION:
     ! Update subgrid weights for prescribed transient Patches and/or dynamic
@@ -165,7 +166,7 @@ contains
     ! OUTSIDE any loops over clumps in the driver.
     !
     ! !USES:
-    use clm_varctl           , only : use_cn, create_glacier_mec_landunit, use_fates
+    use clm_varctl           , only : use_cn, create_glacier_mec_landunit, use_fates, iac_active
     use decompMod            , only : bounds_type, get_proc_clumps, get_clump_bounds
     use decompMod            , only : BOUNDS_LEVEL_PROC
     use dynInitColumnsMod    , only : initialize_new_columns
@@ -179,6 +180,11 @@ contains
     use CarbonStateUpdate1Mod   , only : CarbonStateUpdateDynPatch
     use NitrogenStateUpdate1Mod   , only : NitrogenStateUpdateDynPatch
     use PhosphorusStateUpdate1Mod     , only : PhosphorusStateUpdateDynPatch
+
+! avd
+use clm_varctl, only :  iulog
+!use shr_sys_mod            , only : shr_sys_flush
+
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds_proc  ! processor-level bounds
@@ -212,6 +218,8 @@ contains
     type(phosphorusstate_type) , intent(inout)    :: phosphorusstate_vars
     type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     type(crop_type)          , intent(inout) :: crop_vars
+
+    type(iac2lnd_type)       , intent(inout) :: iac2lnd_vars
 
     !
     ! !LOCAL VARIABLES:
@@ -261,6 +269,20 @@ contains
     if (get_do_harvest()) then
        call dynHarvest_interp(bounds_proc)
     end if
+
+    ! pft and harvest come from iac when active
+    ! avd - the above namelist values are false in this case
+    !       may want to ensure this with namelist checks
+
+write(iulog,*) 'Before iac_active check=', iac_active, ' and iac2lnd_vars update' 
+
+    if (iac_active) then
+
+write(iulog,*) 'Calling iac2lnd_vars update'
+
+       call iac2lnd_vars%update_iac2lnd(bounds_proc)
+    end if
+
 
     ! ==========================================================================
     ! Do everything else related to land cover change

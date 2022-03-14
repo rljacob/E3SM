@@ -1322,6 +1322,14 @@ contains
 
     call t_stopf('CPL:comp_init_pre_all')
 
+    ! TRS - we need to initialize iac first so atm and lnd know it's
+    ! there, via gcam_active -> iac_active
+    call t_startf('comp_init_cc_iac')
+    call t_adj_detailf(+2)
+    call component_init_cc(Eclock_z, iac, iac_init, infodata, NLFilename)
+    call t_adj_detailf(-2)
+    call t_stopf('comp_init_cc_iac')
+
     call t_startf('CPL:comp_init_cc_atm')
     call t_adj_detailf(+2)
 
@@ -1371,12 +1379,6 @@ contains
     call t_adj_detailf(-2)
     call t_stopf('CPL:comp_init_cc_esp')
 
-    call t_startf('comp_init_cc_iac')
-    call t_adj_detailf(+2)
-    call component_init_cc(Eclock_z, iac, iac_init, infodata, NLFilename)
-    call t_adj_detailf(-2)
-    call t_stopf('comp_init_cc_iac')
-
     call t_startf('CPL:comp_init_cx_all')
     call t_adj_detailf(+2)
     call component_init_cx(atm, infodata)
@@ -1387,6 +1389,7 @@ contains
     call component_init_cx(glc, infodata)
     call component_init_cx(wav, infodata)
     call component_init_cx(iac, infodata)
+
     call t_adj_detailf(-2)
     call t_stopf('CPL:comp_init_cx_all')
 
@@ -1542,6 +1545,7 @@ contains
        if (trim(lnd_gnam) /= trim(glc_gnam)) samegrid_lg = .false.
        if (trim(ocn_gnam) /= trim(glc_gnam)) samegrid_og = .false.
        if (trim(ice_gnam) /= trim(glc_gnam)) samegrid_ig = .false.
+       if (trim(iac_gnam) /= trim(lnd_gnam)) samegrid_zl = .false.
        samegrid_alo = (samegrid_al .and. samegrid_ao)
     endif
 
@@ -1679,6 +1683,7 @@ contains
        write(logunit,F0L)'lnd_c2_atm            = ',lnd_c2_atm
        write(logunit,F0L)'lnd_c2_rof            = ',lnd_c2_rof
        write(logunit,F0L)'lnd_c2_glc            = ',lnd_c2_glc
+       write(logunit,F0L)'lnd_c2_iac            = ',lnd_c2_iac
        write(logunit,F0L)'ocn_c2_atm            = ',ocn_c2_atm
        write(logunit,F0L)'ocn_c2_ice            = ',ocn_c2_ice
        write(logunit,F0L)'ocn_c2_wav            = ',ocn_c2_wav
@@ -1810,7 +1815,7 @@ contains
        call t_adj_detailf(+2)
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
 
-       call prep_atm_init(infodata, ocn_c2_atm, ice_c2_atm, lnd_c2_atm, iac_c2_lnd)
+       call prep_atm_init(infodata, ocn_c2_atm, ice_c2_atm, lnd_c2_atm, iac_c2_atm)
 
        call prep_lnd_init(infodata, atm_c2_lnd, rof_c2_lnd, glc_c2_lnd, iac_c2_lnd)
 
@@ -1843,7 +1848,7 @@ contains
        if (drv_threading) call seq_comm_setnthreads(nthreads_CPLID)
 
        call component_init_aream(infodata, rof_c2_ocn, samegrid_ao, samegrid_al, &
-            samegrid_ro, samegrid_lg)
+            samegrid_ro, samegrid_lg, samegrid_zl)
 
        if (drv_threading) call seq_comm_setnthreads(nthreads_GLOID)
 
@@ -2100,6 +2105,11 @@ contains
              call prep_atm_calc_l2x_ax(fractions_lx, timer='CPL:init_atminit')
           endif
 
+          if (iac_present) then
+             ! Get iac output on atm grid
+             call prep_atm_calc_z2x_ax(fractions_zx, timer='CPL:init_atminit')
+          endif
+
           if (ice_present) then
              ! Get ice output on atm grid
              call prep_atm_calc_i2x_ax(fractions_ix, timer='CPL:init_atminit')
@@ -2230,6 +2240,9 @@ contains
        endif
        if (glc_c2_lnd) then
           call prep_lnd_calc_g2x_lx(timer='CPL:init_gllndnd')
+       endif
+       if (iac_c2_lnd) then
+          call prep_lnd_calc_z2x_lx(timer='CPL:init_iac2lnd')
        endif
     endif
 
@@ -2466,6 +2479,27 @@ contains
        endif
 
        !----------------------------------------------------------
+       !| RUN IAC MODEL
+       !----------------------------------------------------------
+       if (iac_present .and. iacrun_alarm) then
+          call component_run(Eclock_z, iac, iac_run, infodata, &
+               seq_flds_x2c_fluxes=seq_flds_x2z_fluxes, &
+               seq_flds_c2x_fluxes=seq_flds_z2x_fluxes, &
+               comp_prognostic=iac_prognostic, comp_num=comp_num_iac, &
+               timer_barrier= 'CPL:IAC_RUN_BARRIER', &
+                  timer_comp_run='CPL:IAC_RUN', &
+                  run_barriers=run_barriers, ymd=ymd, &
+                  tod=tod,comp_layout=iac_layout)
+       endif
+
+       !----------------------------------------------------------
+       !| IAC RECV-POST
+       !----------------------------------------------------------
+       if (iac_present .and. iacrun_alarm) then
+          call cime_run_iac_recv_post()
+       endif
+
+       !----------------------------------------------------------
        !| MAP ATM to OCN
        !  Set a2x_ox as a module variable in prep_ocn_mod
        !  This will be used later in the ice prep and in the
@@ -2534,18 +2568,6 @@ contains
        endif
 
        !----------------------------------------------------------
-       !| RUN IAC MODEL
-       !----------------------------------------------------------
-       if (iac_present .and. iacrun_alarm) then
-          call component_run(Eclock_z, iac, iac_run, infodata, &
-               seq_flds_x2c_fluxes=seq_flds_x2z_fluxes, &
-               seq_flds_c2x_fluxes=seq_flds_z2x_fluxes, &
-               comp_prognostic=iac_prognostic, comp_num=comp_num_iac, &
-               timer_barrier= 'CPL:IAC_RUN_BARRIER', timer_comp_run='CPL:IAC_RUN', &
-               run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=iac_layout)
-       endif
-
-       !----------------------------------------------------------
        !| RUN ICE MODEL
        !----------------------------------------------------------
        if (ice_present .and. icerun_alarm) then
@@ -2606,13 +2628,6 @@ contains
                   run_barriers=run_barriers, ymd=ymd, tod=tod,comp_layout=ocn_layout)
           endif
        end if
-
-       !----------------------------------------------------------
-       !| IAC RECV-POST
-       !----------------------------------------------------------
-       if (iac_present .and. iacrun_alarm) then
-          call cime_run_iac_recv_post()
-       endif
 
        !----------------------------------------------------------
        !| OCN RECV-POST (cesm1_mod_tight, nuopc_tight)
@@ -3294,7 +3309,7 @@ contains
     call component_final(EClock_o, ocn, ocn_final)
     call component_final(EClock_g, glc, glc_final)
     call component_final(EClock_w, wav, wav_final)
-    call component_final(EClock_w, iac, iac_final)
+    call component_final(EClock_z, iac, iac_final)
 
     !------------------------------------------------------------------------
     ! End the run cleanly
@@ -3747,7 +3762,7 @@ contains
        endif
 
 
-       call prep_iac_mrg(infodata, fractions_zx, timer_mrg='CPL:iacprep_mrgx2z')
+       call prep_iac_mrg(infodata, timer_mrg='CPL:iacprep_mrgx2z')
 
        call component_diag(infodata, iac, flow='x2c', comment= 'send iac', &
             info_debug=info_debug, timer_diag='CPL:iacprep_diagav')
@@ -3778,7 +3793,7 @@ contains
     !----------------------------------------------------------
 
     if (iamin_CPLALLIACID) then
-       call component_exch(rof, flow='c2x', &
+       call component_exch(iac, flow='c2x', &
             infodata=infodata, infodata_string='iac2cpl_run', &
             mpicom_barrier=mpicom_CPLALLIACID, run_barriers=run_barriers, &
             timer_barrier='CPL:Z2C_BARRIER', timer_comp_exch='CPL:Z2C', &
@@ -3797,7 +3812,6 @@ contains
        call component_diag(infodata, iac, flow='c2x', comment= 'recv iac', &
             info_debug=info_debug, timer_diag='CPL:iacpost_diagav')
 
-       ! TRS I think this is wrong - review these prep functions.  I think it's more likely
        if (iac_c2_lnd) then
           call prep_lnd_calc_z2x_lx(timer='CPL:iacpost_iac2lnd')
        endif

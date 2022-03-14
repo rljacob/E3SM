@@ -51,6 +51,7 @@ module cam_cpl_indices
   integer :: index_x2a_Sf_lfrac        ! surface land fraction           
   integer :: index_x2a_Sf_ifrac        ! surface ice fraction            
   integer :: index_x2a_Sf_ofrac        ! surface ocn fraction            
+  integer :: index_x2a_Sf_zfrac        ! surface iac fraction            
   integer :: index_x2a_Sx_tref         ! 2m reference temperature        
   integer :: index_x2a_Sx_qref         ! 2m reference specific humidity  
   integer :: index_x2a_Sx_avsdr        ! albedo, visible, direct         
@@ -74,7 +75,8 @@ module cam_cpl_indices
   integer :: index_x2a_Fall_flxdst4    ! dust flux size bin 4
   integer :: index_x2a_Fall_flxvoc     ! MEGAN emissions fluxes   
   integer :: index_x2a_Fall_fco2_lnd   ! co2 flux from land   
-  integer :: index_x2a_Faoo_fco2_ocn   ! co2 flux from ocean  
+  integer :: index_x2a_Faoo_fco2_ocn   ! co2 flux from ocean
+  integer :: index_x2a_Fazz_fco2_iac   ! co2 flux from iac component
   integer :: index_x2a_Faoo_fdms_ocn   ! dms flux from ocean
   integer :: index_x2a_So_ustar	       ! surface friction velocity in ocean
   integer :: index_x2a_So_re           ! square of atm/ocn exch. coeff 
@@ -115,6 +117,7 @@ contains
     index_x2a_Sf_ifrac      = mct_avect_indexra(x2a,'Sf_ifrac')
     index_x2a_Sf_ofrac      = mct_avect_indexra(x2a,'Sf_ofrac')
     index_x2a_Sf_lfrac      = mct_avect_indexra(x2a,'Sf_lfrac')
+    index_x2a_Sf_zfrac      = mct_avect_indexra(x2a,'Sf_zfrac')
 
     index_x2a_Sx_u10        = mct_avect_indexra(x2a,'Sx_u10')
     index_x2a_Faxx_taux     = mct_avect_indexra(x2a,'Faxx_taux')
@@ -134,6 +137,7 @@ contains
     index_x2a_Fall_flxdst4  = mct_avect_indexra(x2a,'Fall_flxdst4')
     index_x2a_Fall_fco2_lnd = mct_avect_indexra(x2a,'Fall_fco2_lnd',perrWith='quiet')
     index_x2a_Faoo_fco2_ocn = mct_avect_indexra(x2a,'Faoo_fco2_ocn',perrWith='quiet')
+    index_x2a_Fazz_fco2_iac = mct_avect_indexra(x2a,'Fazz_fco2_iac',perrWith='quiet')
     index_x2a_Faoo_fdms_ocn = mct_avect_indexra(x2a,'Faoo_fdms_ocn',perrWith='quiet')
 
     if (shr_megan_mechcomps_n>0) then

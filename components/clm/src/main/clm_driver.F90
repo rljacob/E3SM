@@ -15,6 +15,7 @@ module clm_driver
   use clm_varpar             , only : nlevtrc_soil, nlevsoi
   use clm_varctl             , only : wrtdia, iulog, create_glacier_mec_landunit, use_fates, use_betr  
   use clm_varctl             , only : use_cn, use_lch4, use_voc, use_noio, use_c13, use_c14
+  use clm_varctl             , only : iac_active
   use clm_time_manager       , only : get_step_size, get_curr_date, get_ref_date, get_nstep, is_beg_curr_day, get_curr_time_string
   use clm_varpar             , only : nlevsno, nlevgrnd, crop_prog
   use spmdMod                , only : masterproc, mpicom
@@ -80,6 +81,8 @@ module clm_driver
   use atm2lndMod             , only : downscale_forcings
   use lnd2atmMod             , only : lnd2atm
   use lnd2glcMod             , only : lnd2glc_type
+  use lnd2iacMod             , only : lnd2iac_type
+  use iac2lndMod             , only : iac2lnd_type
   !
   use seq_drydep_mod         , only : n_drydep, drydep_method, DD_XLND
   use DryDepVelocity         , only : depvel_compute
@@ -118,6 +121,8 @@ module clm_driver
   use clm_instMod            , only : lnd2atm_vars
   use clm_instMod            , only : glc2lnd_vars
   use clm_instMod            , only : lnd2glc_vars
+  use clm_instMod            , only : lnd2iac_vars
+  use clm_instMod            , only : iac2lnd_vars
   use clm_instMod            , only : soil_water_retention_curve
   use clm_instMod            , only : chemstate_vars
   use clm_instMod            , only : alm_fates
@@ -396,7 +401,7 @@ contains
        grc_cs, grc_cf ,&
        carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,            &
        nitrogenstate_vars, nitrogenflux_vars, glc2lnd_vars,                  &
-       phosphorusstate_vars,phosphorusflux_vars, crop_vars)
+       phosphorusstate_vars,phosphorusflux_vars, crop_vars, iac2lnd_vars)
     call t_stopf('dyn_subgrid')
 
     if (.not. use_fates)then
@@ -1346,6 +1351,22 @@ contains
        !$OMP END PARALLEL DO
        call t_stopf('lnd2glc')
     end if
+
+    ! ============================================================================
+    ! Update stuff to send to iac
+    ! ============================================================================
+
+    if (iac_active) then
+       call t_startf('lnd2iac')
+       !$OMP PARALLEL DO PRIVATE (nc, bounds_clump)
+       do nc = 1,nclumps
+          call get_clump_bounds(nc, bounds_clump)
+          call lnd2iac_vars%update_lnd2iac(bounds_clump)
+       end do
+       !$OMP END PARALLEL DO
+       call t_stopf('lnd2iac')
+    end if
+
 
     ! ============================================================================
     ! Write global average diagnostics to standard output

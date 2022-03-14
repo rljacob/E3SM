@@ -75,6 +75,11 @@ contains
           cam_in(c)%asdif(i)     =  x2a(index_x2a_Sx_avsdf, ig)  
           cam_in(c)%aldif(i)     =  x2a(index_x2a_Sx_anidf, ig)
           cam_in(c)%ts(i)        =  x2a(index_x2a_Sx_t,     ig)  
+
+          if (c == 487) then 
+             write(*,*) "TRS %ts: ", c, i, cam_in(c)%ts(i)
+          endif
+
           cam_in(c)%sst(i)       =  x2a(index_x2a_So_t,     ig)             
           cam_in(c)%snowhland(i) =  x2a(index_x2a_Sl_snowh, ig)  
           cam_in(c)%snowhice(i)  =  x2a(index_x2a_Si_snowh, ig)  
@@ -118,6 +123,9 @@ contains
           if (index_x2a_Fall_fco2_lnd /= 0) then
              cam_in(c)%fco2_lnd(i) = -x2a(index_x2a_Fall_fco2_lnd,ig)
           end if
+          if (index_x2a_Fazz_fco2_iac /= 0) then
+             cam_in(c)%fco2_iac(i) = -x2a(index_x2a_Fazz_fco2_iac,ig)
+          endif
           if (index_x2a_Faoo_fco2_ocn /= 0) then
              cam_in(c)%fco2_ocn(i) = -x2a(index_x2a_Faoo_fco2_ocn,ig)
           end if
@@ -128,7 +136,7 @@ contains
           ig=ig+1
 
        end do
-    end do
+    end do 
 
     ! Get total co2 flux from components,
     ! Note - co2_transport determines if cam_in(c)%cflx(i,c_i(1:4)) is allocated
@@ -163,7 +171,10 @@ contains
              end if
              
              ! co2 flux from fossil fuel
-             if (co2_readFlux_fuel) then
+             ! Use iac component first if coupled, then check for data read
+             if (index_x2a_Fazz_fco2_iac /= 0) then
+                cam_in(c)%cflx(i,c_i(2)) = cam_in(c)%fco2_iac(i)
+             else if (co2_readFlux_fuel) then
                 cam_in(c)%cflx(i,c_i(2)) = data_flux_fuel%co2flx(i,c)
              else
                 cam_in(c)%cflx(i,c_i(2)) = 0._r8

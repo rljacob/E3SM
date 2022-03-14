@@ -7,6 +7,10 @@ module lnd_import_export
   use lnd2glcMod   , only: lnd2glc_type
   use atm2lndType  , only: atm2lnd_type
   use glc2lndMod   , only: glc2lnd_type
+  use lnd2iacMod   , only: lnd2iac_type
+  use iac2lndMod   , only: iac2lnd_type
+  use clm_varctl   , only: iac_active, iulog
+  use clm_varpar   , only: numpft, numharvest
   use GridcellType , only: grc_pp          ! for access to gridcell topology
   use TopounitDataType , only: top_as, top_af  ! atmospheric state and flux variables  
   use clm_cpl_indices
@@ -18,7 +22,7 @@ module lnd_import_export
 contains
 
   !===============================================================================
-  subroutine lnd_import( bounds, x2l, atm2lnd_vars, glc2lnd_vars)
+  subroutine lnd_import( bounds, x2l, atm2lnd_vars, glc2lnd_vars, iac2lnd_vars)
 
     !---------------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -43,6 +47,7 @@ contains
     real(r8)           , intent(in)    :: x2l(:,:) ! driver import state to land model
     type(atm2lnd_type) , intent(inout) :: atm2lnd_vars      ! clm internal input data type
     type(glc2lnd_type) , intent(inout) :: glc2lnd_vars      ! clm internal input data type
+    type(iac2lnd_type) , intent(inout) :: iac2lnd_vars      ! clm iac to land
     !
     ! !LOCAL VARIABLES:
     integer  :: g,topo,i,m,thism,nstep,ier  ! indices, number of steps, and error code
@@ -1152,13 +1157,26 @@ contains
           glc2lnd_vars%icemask_coupled_fluxes_grc(g)  = x2l(index_x2l_Sg_icemask_coupled_fluxes,i)
        end if
 
+       ! iac coupling
+
+       if (iac_active) then
+
+          do num = 0,numpft
+             iac2lnd_vars%pct_pft(g,num) = x2l(index_x2l_Sz_pct_pft(num),i)
+             iac2lnd_vars%pct_pft_prev(g,num) = x2l(index_x2l_Sz_pct_pft_prev(num),i)
+             if (num < numharvest) then
+                iac2lnd_vars%harvest_frac(g,num) = x2l(index_x2l_Sz_harvest_frac(num),i)
+             end if
+          end do
+       end if
+
     end do
 
   end subroutine lnd_import
 
   !===============================================================================
 
-  subroutine lnd_export( bounds, lnd2atm_vars, lnd2glc_vars, l2x)
+  subroutine lnd_export( bounds, lnd2atm_vars, lnd2glc_vars, lnd2iac_vars, l2x)
 
     !---------------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -1166,7 +1184,7 @@ contains
     ! 
     ! !USES:
     use shr_kind_mod       , only : r8 => shr_kind_r8
-    use clm_varctl         , only : iulog, create_glacier_mec_landunit
+    use clm_varctl         , only : iulog, create_glacier_mec_landunit, iac_active
     use clm_time_manager   , only : get_nstep, get_step_size  
     use seq_drydep_mod     , only : n_drydep
     use shr_megan_mod      , only : shr_megan_mechcomps_n
@@ -1176,10 +1194,12 @@ contains
     type(bounds_type) , intent(in)    :: bounds  ! bounds
     type(lnd2atm_type), intent(inout) :: lnd2atm_vars ! clm land to atmosphere exchange data type
     type(lnd2glc_type), intent(inout) :: lnd2glc_vars ! clm land to atmosphere exchange data type
+    type(lnd2iac_type), intent(inout) :: lnd2iac_vars ! clm lnd to gcam exchange vars
+
     real(r8)          , intent(out)   :: l2x(:,:)! land to coupler export state on land grid
     !
     ! !LOCAL VARIABLES:
-    integer  :: g,i   ! indices
+    integer  :: g,i,p ! indices
     integer  :: ier   ! error status
     integer  :: nstep ! time step index
     integer  :: dtime ! time step   
@@ -1259,6 +1279,14 @@ contains
           end do
        end if
 
+       ! iac coupling - need an iac_active logical somewhere
+       if (iac_active) then
+          do p = 0,numpft
+             l2x(index_l2x_Sl_hr(p),i) = lnd2iac_vars%hr(g,p)
+             l2x(index_l2x_Sl_npp(p),i) = lnd2iac_vars%npp(g,p)
+             l2x(index_l2x_Sl_pftwgt(p),i) = lnd2iac_vars%pftwgt(g,p)
+          end do
+       end if
     end do
 
   end subroutine lnd_export

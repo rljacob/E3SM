@@ -43,6 +43,8 @@ module clm_instMod
   use lnd2glcMod                 , only : lnd2glc_type
   use glc2lndMod                 , only : glc2lnd_type
   use glcDiagnosticsMod          , only : glc_diagnostics_type
+  use lnd2iacMod                 , only : lnd2iac_type
+  use iac2lndMod                 , only : iac2lnd_type
   use SoilWaterRetentionCurveMod , only : soil_water_retention_curve_type
   use VegetationPropertiesType   , only : veg_vp             ! Ecophysical Constants
   use SoilorderConType           , only : soilordercon         ! Constants
@@ -119,6 +121,8 @@ module clm_instMod
   type(glc2lnd_type)                                  :: glc2lnd_vars
   type(lnd2atm_type)                                  :: lnd2atm_vars
   type(lnd2glc_type)                                  :: lnd2glc_vars
+  type(lnd2iac_type)                                  :: lnd2iac_vars
+  type(iac2lnd_type)                                  :: iac2lnd_vars
   type(glc_diagnostics_type)                          :: glc_diagnostics_vars
   class(soil_water_retention_curve_type), allocatable :: soil_water_retention_curve
   type(phosphorusstate_type)                          :: phosphorusstate_vars
@@ -339,6 +343,10 @@ contains
     ! is executed even when running without glc_mec.
     call glc2lnd_vars%Init( bounds_proc )
     call lnd2glc_vars%Init( bounds_proc )
+
+    ! Initialize lnd2iac and iac2lnd
+    call lnd2iac_vars%Init( bounds_proc )
+    call iac2lnd_vars%Init ( bounds_proc )
 
     ! If single-column determine closest latitude and longitude
 

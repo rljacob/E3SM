@@ -9,10 +9,6 @@ cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0079 NEW) # Remove once scorpio in a better state
 set(CMAKE_CXX_STANDARD 17)
 
-if (USE_MOAB)
-  find_package(MOAB REQUIRED)
-endif()
-
 # We need to set the compilers *before* calling `project`.
 # The only way to get the compiler name, is to load Macros.cmake
 # However, we do *not* want to pollute the environment with other
@@ -79,6 +75,15 @@ include(${SRCROOT}/components/cmake/build_model.cmake)
 # and CIME cmake modules if they want.
 list(APPEND CMAKE_MODULE_PATH ${SRCROOT}/components/cmake/modules)
 list(APPEND CMAKE_MODULE_PATH ${CIMEROOT}/CIME/non_py/src/CMake)
+
+if (COMP_INTERFACE STREQUAL "moab")
+  set(USE_MOAB True)
+  set(CPPDEFS "${CPPDEFS} -DHAVE_MOAB")
+endif()
+
+if (USE_MOAB)
+  find_package(MOAB REQUIRED)
+endif()
 
 set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
